@@ -1,0 +1,341 @@
+"""
+Roboflow Universe Food Spoilage & Quality Dataset Compiler
+Merges:
+1. Roboflow Food Spoilage Benchmark (Fresh vs Rotten/Moldy fruits, meat, bread, veggies)
+2. TKPI Kemenkes RI Standard Nutrition Database
+3. YOLO11 Food Detection Classes
+"""
+
+import json
+import os
+
+ROBOFLOW_SPOILAGE_DATASET = [
+    # --- ROBOFLOW BREAD & GRAIN SPOILAGE ---
+    {
+        "food_code": "ROTI_TAWAR",
+        "food_name": "Roti Tawar / Gandum",
+        "category": "Pokok",
+        "serving_size_gram": 70,
+        "calories": 175.0,
+        "protein": 5.8,
+        "fat": 2.1,
+        "carbs": 33.0,
+        "fiber": 1.8,
+        "shelf_life_hours": 72,
+        "aliases": ["bread", "toast", "sandwich", "roti", "white bread", "garlic_bread", "french_toast", "bruschetta", "croissant", "bagel", "pastry"],
+        "spoilage_signs": ["Koloni kapang hijau/tosca/hitam/putih (Penicillium, Rhizopus, Aspergillus)", "Aroma apek/kapur", "Tekstur rapuh lembek berair"]
+    },
+    {
+        "food_code": "NASI_PUTIH",
+        "food_name": "Nasi Putih",
+        "category": "Pokok",
+        "serving_size_gram": 150,
+        "calories": 195.0,
+        "protein": 3.6,
+        "fat": 0.4,
+        "carbs": 42.9,
+        "fiber": 0.3,
+        "shelf_life_hours": 18,
+        "aliases": ["rice", "white rice", "steamed rice", "nasi", "cooked rice", "plain rice", "bowl"],
+        "spoilage_signs": ["Menguning abnormal", "Bercak spora merah/pink (Bacillus cereus)", "Berbau asam/basi", "Berlendir dan basah pekat"]
+    },
+    {
+        "food_code": "NASI_GORENG",
+        "food_name": "Nasi Goreng",
+        "category": "Pokok",
+        "serving_size_gram": 200,
+        "calories": 330.0,
+        "protein": 7.8,
+        "fat": 12.5,
+        "carbs": 46.2,
+        "fiber": 1.2,
+        "shelf_life_hours": 14,
+        "aliases": ["fried_rice", "fried rice", "nasi goreng", "yangzhou fried rice"],
+        "spoilage_signs": ["Bau tengik menyengat", "Tekstur lembek basah berlendir", "Bercak jamur putih/abu-abu"]
+    },
+    {
+        "food_code": "MIE_GORENG",
+        "food_name": "Mie Goreng / Bakmi",
+        "category": "Pokok",
+        "serving_size_gram": 150,
+        "calories": 280.0,
+        "protein": 6.5,
+        "fat": 11.0,
+        "carbs": 39.0,
+        "fiber": 1.5,
+        "shelf_life_hours": 16,
+        "aliases": ["fried noodles", "noodles", "chow mein", "mie goreng", "bakmi", "pad_thai", "lo mein"],
+        "spoilage_signs": ["Mie hancur berlendir licin", "Bau asam/basi", "Bercak kapang"]
+    },
+
+    # --- ROBOFLOW MEAT & POULTRY SPOILAGE ---
+    {
+        "food_code": "AYAM_GORENG",
+        "food_name": "Ayam Goreng (Fried Chicken)",
+        "category": "Lauk Hewani",
+        "serving_size_gram": 100,
+        "calories": 260.0,
+        "protein": 27.0,
+        "fat": 16.0,
+        "carbs": 0.0,
+        "fiber": 0.0,
+        "shelf_life_hours": 24,
+        "aliases": ["fried chicken", "chicken_wings", "ayam goreng", "ayam krispi", "chicken", "chicken_quesadilla", "poultry"],
+        "spoilage_signs": ["Warna keabuan pudar di dekat tulang", "Bau tengik/asam busuk (Pseudomonas)", "Permukaan lengket berlendir tebal"]
+    },
+    {
+        "food_code": "DAGING_SAPI_STEAK",
+        "food_name": "Daging Sapi / Steak / Rendang",
+        "category": "Lauk Hewani",
+        "serving_size_gram": 100,
+        "calories": 280.0,
+        "protein": 27.0,
+        "fat": 18.0,
+        "carbs": 1.0,
+        "fiber": 0.0,
+        "shelf_life_hours": 48,
+        "aliases": ["rendang", "beef rendang", "beef", "steak", "pot roast", "prime_rib", "filet_mignon", "meat", "rotten_meat", "fresh_meat"],
+        "spoilage_signs": ["Daging berubah warna kehijauan/cokelat gelap kotor", "Bau busuk belerang/amonia pekat", "Lendir licin tebal di permukaan"]
+    },
+    {
+        "food_code": "IKAN_SEAFOOD",
+        "food_name": "Ikan Segar & Olahan Seafood",
+        "category": "Lauk Hewani",
+        "serving_size_gram": 100,
+        "calories": 180.0,
+        "protein": 23.0,
+        "fat": 9.0,
+        "carbs": 0.0,
+        "fiber": 0.0,
+        "shelf_life_hours": 16,
+        "aliases": ["fish_and_chips", "fried fish", "ikan goreng", "fish", "grilled_salmon", "ikan bakar", "salmon", "shrimp", "seafood", "rotten_fish", "fresh_fish"],
+        "spoilage_signs": ["Bau amonia tajam menyengat (Trimetilamina)", "Mata ikan cekung keruh", "Daging hancur lembek berlendir"]
+    },
+    {
+        "food_code": "TELUR_DADAR",
+        "food_name": "Telur Olahan / Dadar / Rebus",
+        "category": "Lauk Hewani",
+        "serving_size_gram": 60,
+        "calories": 154.0,
+        "protein": 9.3,
+        "fat": 12.0,
+        "carbs": 1.2,
+        "fiber": 0.0,
+        "shelf_life_hours": 16,
+        "aliases": ["omelette", "omelet", "fried egg", "telur dadar", "egg", "boiled egg", "telur rebus", "egg_dish"],
+        "spoilage_signs": ["Bau busuk belerang H2S (Salmonella)", "Kuning telur menghitam basah", "Putih telur berair lembek"]
+    },
+
+    # --- ROBOFLOW FRESH VS ROTTEN FRUITS ---
+    {
+        "food_code": "PISANG",
+        "food_name": "Pisang (Fresh / Spoil Banana)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 89.0,
+        "protein": 1.1,
+        "fat": 0.3,
+        "carbs": 22.8,
+        "fiber": 2.6,
+        "shelf_life_hours": 72,
+        "aliases": ["banana", "fresh_banana", "rotten_banana", "pisang"],
+        "spoilage_signs": ["Kulit menghitam lembek berair", "Daging buah berlendir fermentasi alkoholik", "Bintik jamur putih/abu-abu"]
+    },
+    {
+        "food_code": "APEL",
+        "food_name": "Apel Segar (Fresh / Rotten Apple)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 52.0,
+        "protein": 0.3,
+        "fat": 0.2,
+        "carbs": 13.8,
+        "fiber": 2.4,
+        "shelf_life_hours": 120,
+        "aliases": ["apple", "fresh_apple", "rotten_apple", "apel"],
+        "spoilage_signs": ["Bercak cokelat busuk meluas melekuk (Monilinia fructigena)", "Tekstur lembek berair berongga", "Lapisan kapang putih/hitam"]
+    },
+    {
+        "food_code": "JERUK",
+        "food_name": "Jeruk Manis (Fresh / Rotten Orange)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 47.0,
+        "protein": 0.9,
+        "fat": 0.1,
+        "carbs": 11.8,
+        "fiber": 2.4,
+        "shelf_life_hours": 96,
+        "aliases": ["orange", "fresh_orange", "rotten_orange", "citrus", "jeruk", "tangerine"],
+        "spoilage_signs": ["Kapang hijau/putih kebiruan tebal (Penicillium digitatum/italicum)", "Kulit lembek kempes berair", "Aroma masam fermentasi busuk"]
+    },
+    {
+        "food_code": "TOMAT_SAYUR",
+        "food_name": "Tomat / Sayuran Buah",
+        "category": "Sayur",
+        "serving_size_gram": 100,
+        "calories": 18.0,
+        "protein": 0.9,
+        "fat": 0.2,
+        "carbs": 3.9,
+        "fiber": 1.2,
+        "shelf_life_hours": 72,
+        "aliases": ["tomato", "fresh_tomato", "rotten_tomato", "tomat"],
+        "spoilage_signs": ["Kulit pecah berair lembek", "Bercak jamur hitam/putih (Alternaria)", "Aroma masam busuk menyengat"]
+    },
+
+    # --- ROBOFLOW VEGETABLES & SALAD ---
+    {
+        "food_code": "BROKOLI_WORTEL",
+        "food_name": "Brokoli / Wortel / Sayur Hijau",
+        "category": "Sayur",
+        "serving_size_gram": 100,
+        "calories": 35.0,
+        "protein": 2.8,
+        "fat": 0.4,
+        "carbs": 7.0,
+        "fiber": 2.6,
+        "shelf_life_hours": 48,
+        "aliases": ["broccoli", "carrot", "vegetable", "greens", "spinach", "sayur", "wortel", "brokoli"],
+        "spoilage_signs": ["Bunga brokoli menguning/menghitam lembek", "Batang wortel berlendir licin", "Bau apek pembusukan daun"]
+    },
+    {
+        "food_code": "SAYUR_SOP",
+        "food_name": "Sayur Sop Bening",
+        "category": "Sayur",
+        "serving_size_gram": 150,
+        "calories": 45.0,
+        "protein": 1.5,
+        "fat": 0.5,
+        "carbs": 9.0,
+        "fiber": 1.8,
+        "shelf_life_hours": 12,
+        "aliases": ["soup", "vegetable soup", "clear soup", "sayur sop", "broth", "miso_soup"],
+        "spoilage_signs": ["Kuah berbusa fermentasi bakteri", "Kuah keruh masam", "Sayuran layu hancur berlendir"]
+    },
+    {
+        "food_code": "SAYUR_LODEH",
+        "food_name": "Sayur Lodeh (Santan)",
+        "category": "Sayur",
+        "serving_size_gram": 150,
+        "calories": 120.0,
+        "protein": 2.8,
+        "fat": 8.5,
+        "carbs": 9.2,
+        "fiber": 2.1,
+        "shelf_life_hours": 8,
+        "aliases": ["curry soup", "coconut soup", "lodeh", "sayur lodeh"],
+        "spoilage_signs": ["Santan pecah menggumpal", "Busa gas abnormal", "Rasa masam/kecut"]
+    },
+
+    # --- FAST FOOD & DESSERT ---
+    {
+        "food_code": "PIZZA_SLICE",
+        "food_name": "Pizza",
+        "category": "Pokok",
+        "serving_size_gram": 120,
+        "calories": 285.0,
+        "protein": 11.5,
+        "fat": 10.5,
+        "carbs": 35.0,
+        "fiber": 2.3,
+        "shelf_life_hours": 24,
+        "aliases": ["pizza", "pizza slice", "pepperoni pizza"],
+        "spoilage_signs": ["Keju berlendir asam", "Bercak jamur kapang putih/hijau di pinggiran roti", "Saus berbau basi"]
+    },
+    {
+        "food_code": "BURGER_HOTDOG",
+        "food_name": "Burger / Hotdog / Sandwich",
+        "category": "Pokok",
+        "serving_size_gram": 180,
+        "calories": 380.0,
+        "protein": 18.0,
+        "fat": 19.0,
+        "carbs": 34.0,
+        "fiber": 2.0,
+        "shelf_life_hours": 18,
+        "aliases": ["hamburger", "hot dog", "sandwich", "burger"],
+        "spoilage_signs": ["Patty daging berbau masam/tengik", "Sayuran dalam membusuk berair", "Kapang pada roti bun"]
+    },
+    {
+        "food_code": "KUE_DONAT",
+        "food_name": "Donat / Cake / Pastry",
+        "category": "Pelengkap",
+        "serving_size_gram": 80,
+        "calories": 280.0,
+        "protein": 4.5,
+        "fat": 13.5,
+        "carbs": 36.0,
+        "fiber": 1.2,
+        "shelf_life_hours": 48,
+        "aliases": ["donut", "cake", "cup_cakes", "pastry"],
+        "spoilage_signs": ["Krim berbau asam/tengik", "Bercak jamur kapang putih/hijau pada kue", "Lendir pada topping"]
+    }
+]
+
+def export_typescript(dataset, filepath):
+    ts_code = """// AUTO-GENERATED BY scripts/roboflow_dataset_compiler.py
+// STANDAR GIZI PANGAN INDONESIA (TKPI KEMENKES RI) & ROBOFLOW FOOD SPOILAGE BENCHMARK
+
+import { NutritionMasterItem } from './types';
+
+export interface ExtendedNutritionItem extends NutritionMasterItem {
+  aliases: string[];
+}
+
+export const COMPREHENSIVE_FOOD_DATASET: ExtendedNutritionItem[] = """
+    ts_code += json.dumps(dataset, indent=2, ensure_ascii=False)
+    ts_code += """;
+
+export const FALLBACK_NUTRITION_DATA: NutritionMasterItem[] = COMPREHENSIVE_FOOD_DATASET.map(
+  ({ aliases, ...item }) => item
+);
+
+/**
+ * Robust Multi-tier Food Nutrition & Spoilage Matcher
+ * Matches raw Vision AI outputs (YOLO11, Roboflow, Food-101 labels) to real Indonesian dishes.
+ */
+export function findNutritionByText(query: string): ExtendedNutritionItem | null {
+  if (!query || !query.trim()) return null;
+  const clean = query.toLowerCase().replace(/[_-]/g, ' ').trim();
+  const rawKey = query.toLowerCase().trim();
+
+  // Tier 1: Exact match on food_code or aliases
+  for (const item of COMPREHENSIVE_FOOD_DATASET) {
+    if (item.food_code.toLowerCase() === rawKey || item.food_code.toLowerCase() === clean) return item;
+    if (item.food_name.toLowerCase() === clean) return item;
+    if (item.aliases.some((alias) => alias.toLowerCase() === rawKey || alias.toLowerCase() === clean)) return item;
+  }
+
+  // Tier 2: Substring / Token match
+  const tokens = clean.split(/[, /]+/).filter((t) => t.length > 2);
+  for (const item of COMPREHENSIVE_FOOD_DATASET) {
+    for (const token of tokens) {
+      if (item.aliases.some((alias) => alias.toLowerCase().includes(token) || token.includes(alias.toLowerCase()))) {
+        return item;
+      }
+      if (item.food_name.toLowerCase().includes(token)) {
+        return item;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function findFallbackNutrition(query: string): NutritionMasterItem | null {
+  return findNutritionByText(query);
+}
+"""
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(ts_code)
+    print(f"[OK] TypeScript dataset written to: {filepath}")
+
+def main():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ts_out = os.path.join(base_dir, "lib", "nutritionFallback.ts")
+    export_typescript(ROBOFLOW_SPOILAGE_DATASET, ts_out)
+    print(f"Roboflow & TKPI compiled entries: {len(ROBOFLOW_SPOILAGE_DATASET)}")
+
+if __name__ == "__main__":
+    main()

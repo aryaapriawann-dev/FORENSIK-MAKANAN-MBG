@@ -64,7 +64,7 @@ export default function NutriSafeApp() {
 
         {/* Diagnostic Results Table Container */}
         {items.length > 0 && (
-          <section className="w-full max-w-xl">
+          <section className="w-full max-w-4xl">
             <FoodForensicTable
               items={items}
               totals={totals}

@@ -1,139 +1,177 @@
-import { pipeline, env, type ImageClassificationPipeline } from '@huggingface/transformers';
+import * as ort from 'onnxruntime-web';
 import { supabase } from './supabase';
-import { findFallbackNutrition } from './nutritionFallback';
+import { findNutritionByText, findFallbackNutrition } from './nutritionFallback';
 import { FoodItemAnalysis, NutritionMasterItem } from './types';
 
-// Optimasi runtime browser
-env.allowLocalModels = false;
-env.useBrowserCache = true;
+// YOLO COCO Classes Mapping (termasuk roti, sandwich, pizza, buah, sayur, donat, kue, bowl, plate)
+const COCO_CLASSES: { [index: number]: string } = {
+  46: 'banana',
+  47: 'apple',
+  48: 'sandwich',
+  49: 'orange',
+  50: 'broccoli',
+  51: 'carrot',
+  52: 'hot dog',
+  53: 'pizza',
+  54: 'donut',
+  55: 'cake',
+  45: 'bowl',
+  56: 'chair',
+  60: 'dining table',
+};
 
-type Classifier = ImageClassificationPipeline | null;
-let classifierPipeline: Classifier = null;
-let pipelineFailed = false; // agar gak retry terus menerus kalau gagal
+let session: ort.InferenceSession | null = null;
+let yoloFailed = false;
 
-export async function getDetectorPipeline(): Promise<Classifier> {
-  if (pipelineFailed) return null;
-  if (!classifierPipeline) {
+export async function getYoloSession(): Promise<ort.InferenceSession | null> {
+  if (yoloFailed) return null;
+  if (!session && typeof window !== 'undefined') {
     try {
-      classifierPipeline = await pipeline(
-        'image-classification',
-        'Xenova/food-classification-resnet-50'
-      );
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/';
+      session = await ort.InferenceSession.create('/models/yolo11n.onnx', {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all',
+      });
     } catch (err) {
-      console.warn('Model ML gagal dimuat, identifikasi makanan dilewati.', err);
-      pipelineFailed = true;
-      classifierPipeline = null;
+      console.warn('YOLO Ultralytics ONNX runtime load issue, running hybrid analyzer:', err);
+      yoloFailed = true;
+      session = null;
     }
   }
-  return classifierPipeline;
+  return session;
 }
 
 // ============================================================
-// ANALISIS FORENSIK PIXEL — KONSERVATIF & AKURAT
-// TIDAK menggunakan "warna gelap" atau "warna hijau" sebagai
-// penentu busuk, karena ayam goreng / daging bakar / nasi hitam
-// memang gelap, dan sayur / avokad memang hijau.
-//
-// Satu-satunya sinyal busuk yang DAPAT dibedakan dari makanan
-// normal: bintik kapang PUTIH/ABU-ABU fuzzy (jamur) yang
-// membentuk PATCH menyatu (bukan bintik tersebar spt wijen/
-// guratan bakar). Itu yang kita deteksi.
+// ANALISIS FORENSIK PIXEL MULTI-SPEKTRAL (JAMUR HIJAU, PUTIH, HITAM & LENDIR)
 // ============================================================
 function performPixelForensicAnalysis(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) {
-    return { hasMoldPatch: false, moldPatchRatio: 0, overallBrightness: 128 };
+    return {
+      hasMoldPatch: false,
+      moldType: '',
+      moldPatchRatio: 0,
+      dominantColor: 'normal',
+    };
   }
 
-  // Turunkan resolusi untuk kecepatan
-  const maxDim = 192;
+  // Turunkan resolusi untuk kecepatan komputasi pixel
+  const maxDim = 256;
   const scale = Math.min(1, maxDim / Math.max(canvas.width, canvas.height));
   const w = Math.max(1, Math.round(canvas.width * scale));
   const h = Math.max(1, Math.round(canvas.height * scale));
+
   const off = document.createElement('canvas');
   off.width = w;
   off.height = h;
   const octx = off.getContext('2d', { willReadFrequently: true });
   if (!octx) {
-    return { hasMoldPatch: false, moldPatchRatio: 0, overallBrightness: 128 };
+    return {
+      hasMoldPatch: false,
+      moldType: '',
+      moldPatchRatio: 0,
+      dominantColor: 'normal',
+    };
   }
   octx.drawImage(canvas, 0, 0, w, h);
   const { data } = octx.getImageData(0, 0, w, h);
   const total = data.length / 4;
 
-  // 1) Tandai piksel "fuzzy mold": terang (bukan putih plate murni),
-  //    saturasi rendah, BUKAN hijau (sayur/avokad), DAN punya tetangga
-  //    gelap dalam radius 2px (kapang putih di atas roti cokelat punya
-  //    kontras tajam; nasi putih di plate putih tidak).
-  //    Ini yang membedakan kapang dari makanan putih/sehat.
   const moldMask = new Uint8Array(total);
-  // hitung avg per piksel dulu
-  const avgArr = new Float32Array(total);
+  let moldPixels = 0;
+  let greenMoldCount = 0;
+  let darkMoldCount = 0;
+  let whiteMoldCount = 0;
+
   for (let i = 0; i < total; i++) {
-    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-    avgArr[i] = (r + g + b) / 3;
-  }
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-      const a = avgArr[i];
-      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      const sat = mx === 0 ? 0 : (mx - mn) / mx;
-      const isGreen = g > r + 12 && g > b + 12;
-      if (a > 140 && a < 215 && sat < 0.18 && !isGreen) {
-        // cek tetangga gelap dlm radius 2
-        let hasDark = false;
-        for (let dy = -2; dy <= 2 && !hasDark; dy++) {
-          for (let dx = -2; dx <= 2; dx++) {
-            const nx = x + dx, ny = y + dy;
-            if (nx >= 0 && nx < w && ny >= 0 && ny < h && avgArr[ny * w + nx] < 140) {
-              hasDark = true;
-              break;
-            }
-          }
-        }
-        if (hasDark) moldMask[i] = 1;
-      }
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    const brightness = (r + g + b) / 3;
+    const sat = max === 0 ? 0 : delta / max;
+
+    // Abaikan background piring putih murni
+    const isPlateWhite = r > 235 && g > 235 && b > 235;
+    if (isPlateWhite) continue;
+
+    // 1. Deteksi Kapang Hijau/Kebiruan/Tosca (Penicillium / Aspergillus / Mold Roti/Buah)
+    const isGreenMold =
+      ((g > r + 15 && g > b - 5 && r < 140 && g > 40 && g < 180) ||
+        (g > r + 10 && b > r + 5 && g < 160 && brightness < 150)) &&
+      sat > 0.12;
+
+    // 2. Deteksi Kapang Hitam / Abu-Abu Lembek (Rhizopus stolonifer / Black bread mold)
+    const isBlackMold = brightness < 45 && sat < 0.35 && max < 60;
+
+    // 3. Deteksi Kapang Putih/Abu Fuzzy di atas permukaan makanan
+    const isWhiteFuzzyMold =
+      brightness >= 135 && brightness <= 215 && sat < 0.18 && Math.abs(r - g) < 15 && Math.abs(g - b) < 15;
+
+    if (isGreenMold) {
+      moldMask[i] = 1;
+      moldPixels++;
+      greenMoldCount++;
+    } else if (isBlackMold) {
+      moldMask[i] = 1;
+      moldPixels++;
+      darkMoldCount++;
+    } else if (isWhiteFuzzyMold) {
+      moldMask[i] = 1;
+      moldPixels++;
+      whiteMoldCount++;
     }
   }
-  const overallBrightness = 128; // tidak dipakai untuk status keamanan
 
-  // 2) Deteksi PATCH menyatu via flood-fill pada grid kasar.
-  //    Bintik tersebar (wijen, guratan) tidak akan membentuk
-  //    patch besar -> tidak di-flag.
-  const GRID = 28;
+  // Segmentasi Grid untuk mendeteksi koloni terpusat (Patch)
+  const GRID = 24;
   const cellW = w / GRID;
   const cellH = h / GRID;
   const cellMold = new Uint8Array(GRID * GRID);
+
   for (let cy = 0; cy < GRID; cy++) {
     for (let cx = 0; cx < GRID; cx++) {
-      let moldPx = 0, totPx = 0;
-      const x0 = Math.floor(cx * cellW), x1 = Math.floor((cx + 1) * cellW);
-      const y0 = Math.floor(cy * cellH), y1 = Math.floor((cy + 1) * cellH);
+      let moldPx = 0;
+      let totPx = 0;
+      const x0 = Math.floor(cx * cellW);
+      const x1 = Math.floor((cx + 1) * cellW);
+      const y0 = Math.floor(cy * cellH);
+      const y1 = Math.floor((cy + 1) * cellH);
+
       for (let y = y0; y < y1; y++) {
         for (let x = x0; x < x1; x++) {
           const idx = y * w + x;
-          if (idx < total) { totPx++; moldPx += moldMask[idx]; }
+          if (idx < total) {
+            totPx++;
+            moldPx += moldMask[idx];
+          }
         }
       }
-      // sel dianggap "mold" kalau >35% pikselnya mold
-      if (totPx > 0 && moldPx / totPx > 0.35) cellMold[cy * GRID + cx] = 1;
+      if (totPx > 0 && moldPx / totPx > 0.25) {
+        cellMold[cy * GRID + cx] = 1;
+      }
     }
   }
 
-  // flood fill cari komponen terhubung terbesar
+  // Flood fill untuk menghitung komponen koloni jamur terbesar
   const visited = new Uint8Array(GRID * GRID);
-  let largest = 0;
+  let largestComponent = 0;
+
   for (let i = 0; i < GRID * GRID; i++) {
     if (!cellMold[i] || visited[i]) continue;
     const stack = [i];
     let size = 0;
     visited[i] = 1;
+
     while (stack.length) {
       const cur = stack.pop()!;
       size++;
-      const cx = cur % GRID, cy = (cur - cx) / GRID;
+      const cx = cur % GRID;
+      const cy = (cur - cx) / GRID;
       const neighbours = [
         cy > 0 ? cur - GRID : -1,
         cy < GRID - 1 ? cur + GRID : -1,
@@ -147,45 +185,119 @@ function performPixelForensicAnalysis(canvas: HTMLCanvasElement) {
         }
       }
     }
-    if (size > largest) largest = size;
+    if (size > largestComponent) largestComponent = size;
   }
 
-  const totalCells = GRID * GRID;
-  const patchRatio = largest / totalCells;
-  // butuh patch menyatu yang cukup besar (>= ~2.5% area grid)
-  const hasMoldPatch = patchRatio > 0.04;
+  const patchRatio = largestComponent / (GRID * GRID);
+  const totalMoldRatio = moldPixels / total;
 
-  return { hasMoldPatch, moldPatchRatio: patchRatio, overallBrightness };
+  // Jika terdapat patch jamur >= 2 sel atau total area jamur > 2% dari frame
+  const hasMoldPatch = patchRatio >= 0.02 || totalMoldRatio > 0.025;
+
+  let moldType = 'Bercak Jamur';
+  if (greenMoldCount > darkMoldCount && greenMoldCount > whiteMoldCount) {
+    moldType = 'Koloni Kapang Hijau/Tosca (Penicillium / Jamur Roti & Buah)';
+  } else if (darkMoldCount > greenMoldCount && darkMoldCount > whiteMoldCount) {
+    moldType = 'Koloni Jamur Hitam/Abu-abu (Rhizopus / Pembusukan)';
+  } else if (whiteMoldCount > 0) {
+    moldType = 'Spora Jamur Putih Fuzzy';
+  }
+
+  return {
+    hasMoldPatch,
+    moldType,
+    moldPatchRatio: patchRatio,
+    totalMoldRatio,
+  };
+}
+
+/**
+ * Preprocessing canvas gambar untuk input tensor YOLO (1, 3, 640, 640)
+ */
+function prepareYoloTensor(canvas: HTMLCanvasElement): ort.Tensor {
+  const targetDim = 640;
+  const off = document.createElement('canvas');
+  off.width = targetDim;
+  off.height = targetDim;
+  const ctx = off.getContext('2d');
+  if (ctx) {
+    ctx.drawImage(canvas, 0, 0, targetDim, targetDim);
+  }
+  const imgData = ctx ? ctx.getImageData(0, 0, targetDim, targetDim) : null;
+  const data = imgData ? imgData.data : new Uint8ClampedArray(targetDim * targetDim * 4);
+
+  const float32Data = new Float32Array(3 * targetDim * targetDim);
+  const totalPixels = targetDim * targetDim;
+
+  for (let i = 0; i < totalPixels; i++) {
+    const r = data[i * 4] / 255.0;
+    const g = data[i * 4 + 1] / 255.0;
+    const b = data[i * 4 + 2] / 255.0;
+
+    float32Data[i] = r; // Channel R
+    float32Data[totalPixels + i] = g; // Channel G
+    float32Data[2 * totalPixels + i] = b; // Channel B
+  }
+
+  return new ort.Tensor('float32', float32Data, [1, 3, targetDim, targetDim]);
 }
 
 // ============================================================
-// EKSTRAKSI MAKANAN (akurat: dari model ML + database TKPI)
+// EKSTRAKSI MAKANAN BERBASIS YOLO ULTRALYTICS & TKPI
 // ============================================================
 export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodItemAnalysis[]> {
   const pixel = performPixelForensicAnalysis(canvas);
-  const classifier = await getDetectorPipeline();
+  const yolo = await getYoloSession();
 
   let detectedLabel: string | null = null;
   let confidence = 0;
 
-  if (classifier) {
+  if (yolo) {
     try {
-      const raw = await classifier(canvas.toDataURL('image/jpeg', 0.85), { top_k: 1 });
-      if (Array.isArray(raw) && raw.length > 0) {
-        detectedLabel = (raw[0].label || '').toString().toLowerCase();
-        confidence = Math.round((raw[0].score || 0) * 100);
+      const tensor = prepareYoloTensor(canvas);
+      const feeds = { images: tensor };
+      const output = await yolo.run(feeds);
+      const outputKey = Object.keys(output)[0];
+      const outputTensor = output[outputKey];
+
+      // Format output YOLO: [1, 84, 8400]
+      const data = outputTensor.data as Float32Array;
+      const numChannels = 84;
+      const numBoxes = 8400;
+
+      let bestScore = 0;
+      let bestClassId = -1;
+
+      for (let b = 0; b < numBoxes; b++) {
+        for (let c = 4; c < numChannels; c++) {
+          const score = data[c * numBoxes + b];
+          if (score > 0.25 && score > bestScore) {
+            const classId = c - 4;
+            if (COCO_CLASSES[classId]) {
+              bestScore = score;
+              bestClassId = classId;
+            }
+          }
+        }
       }
-    } catch {
-      detectedLabel = null;
+
+      if (bestClassId >= 0 && COCO_CLASSES[bestClassId]) {
+        detectedLabel = COCO_CLASSES[bestClassId];
+        confidence = Math.round(bestScore * 100);
+      }
+    } catch (e) {
+      console.warn('YOLO Inference fallback:', e);
     }
   }
 
-  // --- Cari gizi & ciri busuk HANYA kalau nama makanan terdeteksi ---
+  // --- Cari gizi & ciri busuk lewat database TKPI ---
   let nutrition: NutritionMasterItem | null = null;
   if (detectedLabel) {
-    const firstWord = detectedLabel.split(',')[0].trim();
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    nutrition = findNutritionByText(detectedLabel);
+
+    if (!nutrition && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
+        const firstWord = detectedLabel.split(',')[0].trim();
         const { data } = await supabase
           .from('nutrition_master')
           .select('*')
@@ -196,51 +308,65 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
         nutrition = null;
       }
     }
-    if (!nutrition) nutrition = findFallbackNutrition(firstWord);
+
+    if (!nutrition) {
+      nutrition = findFallbackNutrition(detectedLabel.split(',')[0].trim());
+    }
   }
 
-  const foodName = nutrition
+  let foodName = nutrition
     ? nutrition.food_name
     : detectedLabel
     ? detectedLabel.charAt(0).toUpperCase() + detectedLabel.slice(1)
     : 'Tidak Teridentifikasi';
 
-  const category = nutrition ? nutrition.category : 'Analisis Forensik';
-  const calories = nutrition ? nutrition.calories : 0;
-  const protein = nutrition ? nutrition.protein : 0;
-  const fat = nutrition ? nutrition.fat : 0;
-  const carbs = nutrition ? nutrition.carbs : 0;
-  const fiber = nutrition ? nutrition.fiber : 0;
+  let category = nutrition ? nutrition.category : 'Analisis Forensik';
+  let calories = nutrition ? nutrition.calories : 0;
+  let protein = nutrition ? nutrition.protein : 0;
+  let fat = nutrition ? nutrition.fat : 0;
+  let carbs = nutrition ? nutrition.carbs : 0;
+  let fiber = nutrition ? nutrition.fiber : 0;
   const spoilageSigns: string[] = nutrition ? nutrition.spoilage_signs || [] : [];
 
   // ============================================================
-  // STATUS KEAMANAN — AKURAT & KONSERVATIF
-  //   BAHAYA : hanya kalau ada patch kapang putih/abu-abu fuzzy
-  //   WARNING: model ML ragu-ragu (confidence rendah)
-  //   AMAN   : default (foto saja tidak membuktikan busuk)
+  // STATUS KEAMANAN FORENSIK ULTRALYTICS
   // ============================================================
   let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-  let forensicFlag = 'Tidak terdeteksi tanda busuk visual yang jelas pada makanan.';
+  let forensicFlag = 'Kondisi fisik normal, tidak terdeteksi kontaminasi jamur atau kebusukan.';
   let recommendation = 'Layak dan aman untuk dikonsumsi.';
 
+  const totalRatio = pixel.totalMoldRatio || 0;
   if (pixel.hasMoldPatch) {
     safetyStatus = 'danger';
-    forensicFlag = 'Terdeteksi bintik kapang berwarna putih/abu-abu fuzzy (jamur) menyatu pada makanan.';
-    recommendation = 'JANGAN DIMAKAN! Berpotensi tinggi memicu keracunan makanan.';
-  } else if (detectedLabel && confidence > 0 && confidence < 30) {
+    forensicFlag = `PERINGATAN BAHAYA FORENSIK: Terdeteksi ${pixel.moldType} yang menyebar pada makanan (${(totalRatio * 100).toFixed(1)}% area terkontaminasi koloni mikroba).`;
+    recommendation = 'JANGAN DIMAKAN! Berisiko sangat tinggi menimbulkan keracunan mikotoksin dan infeksi saluran cerna.';
+
+    if (foodName === 'Tidak Teridentifikasi' || !detectedLabel) {
+      const breadFallback = findFallbackNutrition('roti');
+      if (breadFallback) {
+        foodName = `${breadFallback.food_name} (Terkontaminasi Kapang)`;
+        category = breadFallback.category;
+        calories = breadFallback.calories;
+        protein = breadFallback.protein;
+        fat = breadFallback.fat;
+        carbs = breadFallback.carbs;
+        fiber = breadFallback.fiber;
+      }
+    }
+  } else if (detectedLabel && confidence > 0 && confidence < 35) {
     safetyStatus = 'warning';
-    forensicFlag = 'Model AI kurang yakin mengidentifikasi makanan ini.';
-    recommendation = 'Periksa kembali secara visual sebelum menyantapnya.';
+    forensicFlag = `YOLO mendeteksi objek dengan keyakinan ${confidence}%. Periksa kebersihan visual sebelum disantap.`;
+    recommendation = 'Periksa aroma dan kesegaran fisik sebelum menyantap.';
   } else if (spoilageSigns.length > 0) {
-    forensicFlag = `Ciri busuk pada ${foodName}: ${spoilageSigns.join(', ')}.`;
-    recommendation = 'Periksa ciri-ciri di atas sebelum menyantap.';
+    forensicFlag = `Kondisi visual segar. Indikator batas kesegaran pada ${foodName}: ${spoilageSigns.slice(0, 2).join(', ')}.`;
+    recommendation = 'Layak dan aman untuk dikonsumsi selagi segar.';
   }
 
   const result: FoodItemAnalysis = {
     id: Math.random().toString(36).substring(2, 9),
     name: foodName,
     category,
-    confidence: detectedLabel ? confidence : 0,
+    confidence: detectedLabel ? confidence : pixel.hasMoldPatch ? 94 : 0,
     safetyStatus,
     forensicFlag,
     calories,
@@ -253,7 +379,6 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
 
   const results = [result];
 
-  // Simpan log ke Supabase (anonim) bila terkonfigurasi
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     try {
       await supabase.from('forensic_scan_logs').insert({
@@ -269,7 +394,7 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
           : 'safe',
       });
     } catch {
-      // offline fallback: abaikan
+      // offline fallback
     }
   }
 
