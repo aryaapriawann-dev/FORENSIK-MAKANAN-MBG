@@ -1,7 +1,7 @@
 import { pipeline, env, type ImageClassificationPipeline } from '@huggingface/transformers';
 import { supabase } from './supabase';
 import { findFallbackNutrition } from './nutritionFallback';
-import { FoodItemAnalysis } from './types';
+import { FoodItemAnalysis, NutritionMasterItem } from './types';
 
 // Optimasi runtime browser
 env.allowLocalModels = false;
@@ -20,7 +20,7 @@ export async function getDetectorPipeline(): Promise<Classifier> {
         'Xenova/food-classification-resnet-50'
       );
     } catch (err) {
-      console.warn('Model ML gagal dimuat, forensik tetap jalan via analisis piksel.', err);
+      console.warn('Model ML gagal dimuat, identifikasi makanan dilewati.', err);
       pipelineFailed = true;
       classifierPipeline = null;
     }
@@ -29,26 +29,24 @@ export async function getDetectorPipeline(): Promise<Classifier> {
 }
 
 // ============================================================
-// ANALISIS FORENSIK PIXEL — SUNGGUHAN, TIDAK BUTUH MODEL ML
-// Mendeteksi tanda busuk / jamur / lendir / perubahan warna
-// dari piksel nyata di kanvas. Ini yang menentukan keamanan.
+// ANALISIS FORENSIK PIXEL — KONSERVATIF & AKURAT
+// TIDAK menggunakan "warna gelap" atau "warna hijau" sebagai
+// penentu busuk, karena ayam goreng / daging bakar / nasi hitam
+// memang gelap, dan sayur / avokad memang hijau.
+//
+// Satu-satunya sinyal busuk yang DAPAT dibedakan dari makanan
+// normal: bintik kapang PUTIH/ABU-ABU fuzzy (jamur) yang
+// membentuk PATCH menyatu (bukan bintik tersebar spt wijen/
+// guratan bakar). Itu yang kita deteksi.
 // ============================================================
 function performPixelForensicAnalysis(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) {
-    return {
-      isDiscolored: false,
-      isMoldy: false,
-      isSlimy: false,
-      isDarkSpoiled: false,
-      moldRatio: 0,
-      discolorationRatio: 0,
-      overallBrightness: 128,
-    };
+    return { hasMoldPatch: false, moldPatchRatio: 0, overallBrightness: 128 };
   }
 
-  // Turunkan resolusi untuk kecepatan (max ~256px)
-  const maxDim = 256;
+  // Turunkan resolusi untuk kecepatan
+  const maxDim = 192;
   const scale = Math.min(1, maxDim / Math.max(canvas.width, canvas.height));
   const w = Math.max(1, Math.round(canvas.width * scale));
   const h = Math.max(1, Math.round(canvas.height * scale));
@@ -57,61 +55,112 @@ function performPixelForensicAnalysis(canvas: HTMLCanvasElement) {
   off.height = h;
   const octx = off.getContext('2d', { willReadFrequently: true });
   if (!octx) {
-    return {
-      isDiscolored: false,
-      isMoldy: false,
-      isSlimy: false,
-      isDarkSpoiled: false,
-      moldRatio: 0,
-      discolorationRatio: 0,
-      overallBrightness: 128,
-    };
+    return { hasMoldPatch: false, moldPatchRatio: 0, overallBrightness: 128 };
   }
   octx.drawImage(canvas, 0, 0, w, h);
   const { data } = octx.getImageData(0, 0, w, h);
   const total = data.length / 4;
 
-  let greenishGray = 0; // kapang/bercabang kehijauan keabuan
-  let darkSpots = 0; // bercak hitam basah (busuk berat)
-  let totalR = 0, totalG = 0, totalB = 0;
+  // 1) Tandai piksel "fuzzy mold": terang (bukan putih plate murni),
+  //    saturasi rendah, BUKAN hijau (sayur/avokad), DAN punya tetangga
+  //    gelap dalam radius 2px (kapang putih di atas roti cokelat punya
+  //    kontras tajam; nasi putih di plate putih tidak).
+  //    Ini yang membedakan kapang dari makanan putih/sehat.
+  const moldMask = new Uint8Array(total);
+  // hitung avg per piksel dulu
+  const avgArr = new Float32Array(total);
+  for (let i = 0; i < total; i++) {
+    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+    avgArr[i] = (r + g + b) / 3;
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      const a = avgArr[i];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const sat = mx === 0 ? 0 : (mx - mn) / mx;
+      const isGreen = g > r + 12 && g > b + 12;
+      if (a > 140 && a < 215 && sat < 0.18 && !isGreen) {
+        // cek tetangga gelap dlm radius 2
+        let hasDark = false;
+        for (let dy = -2; dy <= 2 && !hasDark; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h && avgArr[ny * w + nx] < 140) {
+              hasDark = true;
+              break;
+            }
+          }
+        }
+        if (hasDark) moldMask[i] = 1;
+      }
+    }
+  }
+  const overallBrightness = 128; // tidak dipakai untuk status keamanan
 
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    totalR += r; totalG += g; totalB += b;
-    const avg = (r + g + b) / 3;
-
-    // Kapang: hijau dominan tapi gelap, atau abu-abu kehijauan (bukan cokelat roti)
-    // Cokelat roti punya R > B; kapang punya G >= R.
-    if (g >= r - 5 && g > b + 12 && avg < 140 && r < 150) greenishGray++;
-
-    // Bercak hitam busuk: RGB sangat rendah & merata (bukan cokelat kecoklatan)
-    // Cokelat roti: r > 60 dan r > b. Busuk: r,g,b semua < 38.
-    if (r < 38 && g < 38 && b < 38) darkSpots++;
+  // 2) Deteksi PATCH menyatu via flood-fill pada grid kasar.
+  //    Bintik tersebar (wijen, guratan) tidak akan membentuk
+  //    patch besar -> tidak di-flag.
+  const GRID = 28;
+  const cellW = w / GRID;
+  const cellH = h / GRID;
+  const cellMold = new Uint8Array(GRID * GRID);
+  for (let cy = 0; cy < GRID; cy++) {
+    for (let cx = 0; cx < GRID; cx++) {
+      let moldPx = 0, totPx = 0;
+      const x0 = Math.floor(cx * cellW), x1 = Math.floor((cx + 1) * cellW);
+      const y0 = Math.floor(cy * cellH), y1 = Math.floor((cy + 1) * cellH);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = y * w + x;
+          if (idx < total) { totPx++; moldPx += moldMask[idx]; }
+        }
+      }
+      // sel dianggap "mold" kalau >35% pikselnya mold
+      if (totPx > 0 && moldPx / totPx > 0.35) cellMold[cy * GRID + cx] = 1;
+    }
   }
 
-  const avgBrightness = (totalR + totalG + totalB) / 3 / total;
+  // flood fill cari komponen terhubung terbesar
+  const visited = new Uint8Array(GRID * GRID);
+  let largest = 0;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!cellMold[i] || visited[i]) continue;
+    const stack = [i];
+    let size = 0;
+    visited[i] = 1;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      size++;
+      const cx = cur % GRID, cy = (cur - cx) / GRID;
+      const neighbours = [
+        cy > 0 ? cur - GRID : -1,
+        cy < GRID - 1 ? cur + GRID : -1,
+        cx > 0 ? cur - 1 : -1,
+        cx < GRID - 1 ? cur + 1 : -1,
+      ];
+      for (const n of neighbours) {
+        if (n >= 0 && cellMold[n] && !visited[n]) {
+          visited[n] = 1;
+          stack.push(n);
+        }
+      }
+    }
+    if (size > largest) largest = size;
+  }
 
-  // Threshold berdasarkan kalibrasi nyata (lihat README/notes):
-  //   roti BUSUK  -> darkSpots 0.045, greenishGray 0.066
-  //   roti NORMAL -> darkSpots 0.000, greenishGray 0.0001
-  const darkRatio = darkSpots / total;
-  const greenRatio = greenishGray / total;
+  const totalCells = GRID * GRID;
+  const patchRatio = largest / totalCells;
+  // butuh patch menyatu yang cukup besar (>= ~2.5% area grid)
+  const hasMoldPatch = patchRatio > 0.04;
 
-  return {
-    isMoldy: greenRatio > 0.02 || darkRatio > 0.005,
-    isSlimy: false,
-    isDarkSpoiled: darkRatio > 0.005,
-    isDiscolored: greenRatio > 0.005,
-    moldRatio: greenRatio + darkRatio,
-    discolorationRatio: greenRatio,
-    overallBrightness: avgBrightness,
-  };
+  return { hasMoldPatch, moldPatchRatio: patchRatio, overallBrightness };
 }
 
 // ============================================================
-// EKSTRAKSI MAKANAN (opsional, hanya kalau model ML jalan)
+// EKSTRAKSI MAKANAN (akurat: dari model ML + database TKPI)
 // ============================================================
-
 export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodItemAnalysis[]> {
   const pixel = performPixelForensicAnalysis(canvas);
   const classifier = await getDetectorPipeline();
@@ -131,8 +180,8 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
     }
   }
 
-  // --- Cari gizi HANYA kalau nama makanan beneran terdeteksi ---
-  let nutrition = null;
+  // --- Cari gizi & ciri busuk HANYA kalau nama makanan terdeteksi ---
+  let nutrition: NutritionMasterItem | null = null;
   if (detectedLabel) {
     const firstWord = detectedLabel.split(',')[0].trim();
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -162,22 +211,29 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   const fat = nutrition ? nutrition.fat : 0;
   const carbs = nutrition ? nutrition.carbs : 0;
   const fiber = nutrition ? nutrition.fiber : 0;
+  const spoilageSigns: string[] = nutrition ? nutrition.spoilage_signs || [] : [];
 
   // ============================================================
-  // STATUS KEAMANAN — MURNI DARI FORENSIK PIXEL (bukan tebakan)
+  // STATUS KEAMANAN — AKURAT & KONSERVATIF
+  //   BAHAYA : hanya kalau ada patch kapang putih/abu-abu fuzzy
+  //   WARNING: model ML ragu-ragu (confidence rendah)
+  //   AMAN   : default (foto saja tidak membuktikan busuk)
   // ============================================================
   let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-  let forensicFlag = 'Kondisi visual segar, warna dan tekstur alami.';
+  let forensicFlag = 'Tidak terdeteksi tanda busuk visual yang jelas pada makanan.';
   let recommendation = 'Layak dan aman untuk dikonsumsi.';
 
-  if (pixel.isMoldy || pixel.isDarkSpoiled) {
+  if (pixel.hasMoldPatch) {
     safetyStatus = 'danger';
-    forensicFlag = 'Terdeteksi bintik kapang/jamur atau bercak hitam pembusukan pada makanan.';
+    forensicFlag = 'Terdeteksi bintik kapang berwarna putih/abu-abu fuzzy (jamur) menyatu pada makanan.';
     recommendation = 'JANGAN DIMAKAN! Berpotensi tinggi memicu keracunan makanan.';
-  } else if (pixel.isSlimy || pixel.isDiscolored) {
+  } else if (detectedLabel && confidence > 0 && confidence < 30) {
     safetyStatus = 'warning';
-    forensicFlag = 'Terdeteksi lendir mengkilap atau perubahan warna mencurigakan.';
-    recommendation = 'Periksa aroma dan tekstur sebelum menyantap porsi besar.';
+    forensicFlag = 'Model AI kurang yakin mengidentifikasi makanan ini.';
+    recommendation = 'Periksa kembali secara visual sebelum menyantapnya.';
+  } else if (spoilageSigns.length > 0) {
+    forensicFlag = `Ciri busuk pada ${foodName}: ${spoilageSigns.join(', ')}.`;
+    recommendation = 'Periksa ciri-ciri di atas sebelum menyantap.';
   }
 
   const result: FoodItemAnalysis = {
