@@ -1,0 +1,185 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "primary-fixed-dim": "#68dba9", "tertiary": "#9b3e3b", "tertiary-container": "#ba5551", "outline-variant": "#bccac0", "inverse-primary": "#68dba9", "surface-container-high": "#e4eae4", "surface-bright": "#f5fbf5", "secondary-fixed-dim": "#95d3ba", "inverse-surface": "#2c322e", "surface-dim": "#d5dcd6", "tertiary-fixed": "#ffdad7", "surface-container-lowest": "#ffffff", "on-primary": "#ffffff", "background": "#f5fbf5", "primary-container": "#00855d", "on-primary-fixed-variant": "#005137", "on-tertiary-fixed": "#410004", "on-secondary-container": "#306d58", "on-surface-variant": "#3d4a42", "on-background": "#171d19", "surface-container-low": "#eff5ef", "surface-tint": "#006c4a", "surface-container-highest": "#dee4de", "surface": "#f5fbf5", "on-secondary-fixed-variant": "#0b513d", "on-primary-container": "#f5fff7", "on-surface": "#171d19", "outline": "#6d7a72", "on-tertiary-fixed-variant": "#7f2928", "on-error-container": "#93000a", "secondary": "#2b6954", "on-secondary": "#ffffff", "primary-fixed": "#85f8c4", "error-container": "#ffdad6", "surface-variant": "#dee4de", "inverse-on-surface": "#ecf2ec", "primary": "#006948", "secondary-fixed": "#b0f0d6", "surface-container": "#e9efe9", "tertiary-fixed-dim": "#ffb3ae", "on-tertiary": "#ffffff", "on-tertiary-container": "#fffbff", "on-error": "#ffffff", "on-secondary-fixed": "#002117", "secondary-container": "#adedd3", "on-primary-fixed": "#002114", "error": "#ba1a1a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "stack-md": "16px", "margin-mobile": "16px", "container-max-width": "1280px", "stack-sm": "8px", "gutter": "24px", "margin-desktop": "40px", "unit": "4px", "stack-lg": "32px" }, "fontFamily": { "label-caps": ["JetBrains Mono"], "display": ["Inter"], "headline-lg": ["Inter"], "data-table": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "headline-lg-mobile": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }] } } } }</script><style>@layer base { body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .pt-safe { padding-top: env(safe-area-inset-top); } } .backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background text-on-background font-body-md"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe"><div class="h-16 px-margin-mobile flex items-center justify-between gap-stack-sm"><div class="flex items-center gap-stack-sm"><img alt="NutriSafe AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkKH16P8q9m9Q6BGYQt4f52lXUp5xGUfP2BLzhK23jiyA0a5PIV0E9wc1lTYoHLc1QV6JWCUyvE_JUmnjrle_8djJHjxlGeUQFKD3VeVemjLKOzCUBhvhan5kTbqTi5cHI3LsbuLXoqsL9nqAX2_0rxAdEN14q27fLclr7zSW2-pi6KFPwnCKM7ntlqEcBBxsiNqiTk6IQKfKAGPJ7crnS1vRLNU_kVISwvqlU8IZsh9p6NpScjDs"/><span class="font-headline-md text-headline-md text-on-surface">Dashboard</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="pt-16 pb-20 bg-background min-h-screen"><div class="flex flex-col w-full h-full pb-safe">
+<!-- Sticky Header Area -->
+<div class="sticky top-[64px] z-40 bg-background/95 backdrop-blur-md pb-4 pt-4 px-margin-mobile flex flex-col gap-stack-md shadow-sm">
+<!-- Search Bar -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low rounded-xl text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-shadow" placeholder="Search scan history..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-surface hover:bg-surface-variant transition-colors text-outline">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+<!-- Filter Chips -->
+<div class="flex overflow-x-auto gap-stack-sm pb-1 scrollbar-hide snap-x">
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-primary text-on-primary font-data-table shadow-sm transition-transform active:scale-95">
+                All
+            </button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-data-table shadow-sm transition-transform active:scale-95 hover:bg-surface-variant">
+                Safe
+            </button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-data-table shadow-sm transition-transform active:scale-95 hover:bg-surface-variant">
+                Caution
+            </button>
+<button class="snap-start shrink-0 px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-data-table shadow-sm transition-transform active:scale-95 hover:bg-surface-variant">
+                Danger
+            </button>
+</div>
+</div>
+<!-- Scan History List -->
+<div class="flex flex-col px-margin-mobile gap-stack-sm pb-24">
+<!-- Date Header -->
+<h3 class="font-label-caps text-label-caps text-outline mt-2 mb-1">TODAY</h3>
+<!-- Log Item 1: Safe -->
+<div class="group relative flex gap-stack-md p-3 bg-surface-container-low rounded-2xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:-translate-y-[1px] transition-all cursor-pointer overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="shrink-0 relative">
+<div class="w-16 h-16 bg-cover bg-center rounded-xl shadow-sm" data-alt="Close up clinical top-down shot of a grilled salmon salad in a sleek white bowl on a laboratory style stainless steel table. Modern corporate minimal aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD1KounycnVWIC6-l-iOh6UnD3IcX0jAMtS1wouTDOPSaR-ucHnQTC0NUBh-hDr9RzDAHRy35X0-J4TUvkWG52IXWJp75sZMts4YFDPI-1X4vI3MCB1yiddkmL44xHHsGVPnSFqwSZ5HSeMQokKnPpMYTit9VIM2f9-5NwyPTvxBV7cXwZpX4YVelH37HYbhso4HqezwOANlEigEhOTx1t6d8Ptw7c5VYyHcv03zgMd4Ud52iwvwL4')"></div>
+<div class="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary text-[14px]">check</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 justify-center min-w-0">
+<div class="flex justify-between items-start mb-0.5">
+<h4 class="font-data-table text-data-table text-on-surface truncate pr-2">Grilled Salmon Salad</h4>
+<span class="shrink-0 font-label-caps text-[10px] text-outline">12:45 PM</span>
+</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded-full bg-primary-container/10 text-primary font-label-caps text-[10px]">Verified Safe</span>
+</div>
+<div class="flex gap-2 font-label-caps text-[10px] text-outline-variant">
+<span class="text-on-surface-variant">450 kcal</span>
+<span>•</span>
+<span>32g P</span>
+<span>•</span>
+<span>15g C</span>
+<span>•</span>
+<span>22g F</span>
+</div>
+</div>
+</div>
+<!-- Log Item 2: Caution -->
+<div class="group relative flex gap-stack-md p-3 bg-surface-container-low rounded-2xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:-translate-y-[1px] transition-all cursor-pointer overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary-container"></div>
+<div class="shrink-0 relative">
+<div class="w-16 h-16 bg-cover bg-center rounded-xl shadow-sm" data-alt="Macro photography of an artisanal cold brew coffee with milk in a glass beaker on a sterile slate surface. High contrast clinical lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA0JlH4pI9RUOz7OdBMTUoFH9qBP2mKMMHZwH-yKrPzai3zVUXluHPe1SLKycnGZbQejRlSobgmM-HBl5gq2-zqM467xerygRWvWG5aC37Tng1D7YYhhgRrPz0fYQV2h9fqiH57tbAcMTQ1uCpl2EnB5KoXWuvd6h4H8du2bdzRygpBvOdqVu4CF4R9HcuSVtOCO_Kyg6YJhXNJ7kUqajV_AbMDyHK06D21nujlof1DsngCRevh6X4')"></div>
+<div class="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-tertiary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-tertiary text-[14px]">warning</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 justify-center min-w-0">
+<div class="flex justify-between items-start mb-0.5">
+<h4 class="font-data-table text-data-table text-on-surface truncate pr-2">Artisanal Cold Brew</h4>
+<span class="shrink-0 font-label-caps text-[10px] text-outline">08:15 AM</span>
+</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary-container font-label-caps text-[10px]">High Caffeine</span>
+</div>
+<div class="flex gap-2 font-label-caps text-[10px] text-outline-variant">
+<span class="text-on-surface-variant">120 kcal</span>
+<span>•</span>
+<span>2g P</span>
+<span>•</span>
+<span>18g C</span>
+<span>•</span>
+<span>4g F</span>
+</div>
+</div>
+</div>
+<!-- Date Header -->
+<h3 class="font-label-caps text-label-caps text-outline mt-4 mb-1">YESTERDAY</h3>
+<!-- Log Item 3: Danger -->
+<div class="group relative flex gap-stack-md p-3 bg-error-container/20 rounded-2xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:-translate-y-[1px] transition-all cursor-pointer overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="shrink-0 relative">
+<div class="w-16 h-16 bg-cover bg-center rounded-xl shadow-sm grayscale-[30%]" data-alt="Overhead sterile lab photo of a pre-packaged sushi roll with warning labels slightly visible. Cool blue tinted lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBB2v2_I_vO3iCGDocIuxeSSr3o9nKsqNgQRf167diaOUsXlitLRTjnlU6SglARX79UQbJ9PUXs23EGo6xZyra1KmIY4leyObVsr0bIVRDLioaS9xMX2MGZcftgbBRb4DbXHGmvOk0SyCMIgm4v9-GQowt2H9vLkYyW7O6ggtqBhAIW0JPqVPwVQOsuK35L1EkY4RSvcvFq-BpptPVsJlzAxO81gPk6sAsM-pueFDMq9oP_7IObWCU')"></div>
+<div class="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-error flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-error text-[14px]">dangerous</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 justify-center min-w-0">
+<div class="flex justify-between items-start mb-0.5">
+<h4 class="font-data-table text-data-table text-on-surface truncate pr-2">Pre-packaged Sushi</h4>
+<span class="shrink-0 font-label-caps text-[10px] text-outline">19:30 PM</span>
+</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded-full bg-error/10 text-error font-label-caps text-[10px]">Contamination Risk</span>
+</div>
+<div class="flex gap-2 font-label-caps text-[10px] text-outline-variant">
+<span class="text-on-surface-variant">380 kcal</span>
+<span>•</span>
+<span>14g P</span>
+<span>•</span>
+<span>52g C</span>
+<span>•</span>
+<span>8g F</span>
+</div>
+</div>
+</div>
+<!-- Log Item 4: Safe -->
+<div class="group relative flex gap-stack-md p-3 bg-surface-container-low rounded-2xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:-translate-y-[1px] transition-all cursor-pointer overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="shrink-0 relative">
+<div class="w-16 h-16 bg-cover bg-center rounded-xl shadow-sm" data-alt="Top down clinical view of a protein shake in a matte black shaker bottle on a slate gray lab surface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuALgytQY6XvDq6nFTKPJ9VZu-QYQja2AGgc3i3KX6ae6aPj9Usi5AsvBnkr6qTvs2Fkrjs6yf6AnzUBb1ftXjbX3h78GXT3FaZOeAxe7bNX4jbbxGM-ENkSxkjxG6WVBH6-zkfdFu8rD6OOOtTQ4rJcmWqfNMztNX2cgJNEur8o18QG8D59-G_bM9GBiPG3ADd8W8xHyOfvtRGvo5uAzj__z1QNfL369UgnfkReBr1zdeug9Nl4TF0')"></div>
+<div class="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary text-[14px]">check</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 justify-center min-w-0">
+<div class="flex justify-between items-start mb-0.5">
+<h4 class="font-data-table text-data-table text-on-surface truncate pr-2">Whey Protein Isolate</h4>
+<span class="shrink-0 font-label-caps text-[10px] text-outline">14:00 PM</span>
+</div>
+<div class="flex items-center gap-2 mb-1.5">
+<span class="px-2 py-0.5 rounded-full bg-primary-container/10 text-primary font-label-caps text-[10px]">Verified Safe</span>
+</div>
+<div class="flex gap-2 font-label-caps text-[10px] text-outline-variant">
+<span class="text-on-surface-variant">120 kcal</span>
+<span>•</span>
+<span>25g P</span>
+<span>•</span>
+<span>3g C</span>
+<span>•</span>
+<span>1g F</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default, used for demonstration) -->
+<!-- 
+    <div class="flex-1 flex flex-col items-center justify-center px-margin-mobile text-center opacity-0 pointer-events-none">
+        <div class="w-24 h-24 mb-6 rounded-full bg-surface-container-high flex items-center justify-center">
+            <span class="material-symbols-outlined text-outline text-[40px]">history_toggle_off</span>
+        </div>
+        <h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2">No scans yet</h3>
+        <p class="font-body-md text-body-md text-on-surface-variant mb-6 max-w-[280px]">Your food safety analysis history will appear here once you start scanning.</p>
+        <button class="px-6 py-3 bg-primary text-on-primary rounded-xl font-data-table shadow-md hover:bg-primary/90 transition-colors">
+            Start First Scan
+        </button>
+    </div>
+    -->
+</div>
+<script>
+    // Simple script to handle filter chip active states
+    document.addEventListener('DOMContentLoaded', () => {
+        const chips = document.querySelectorAll('.snap-start');
+        
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                // Reset all
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary', 'text-on-primary');
+                    c.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                });
+                // Set active
+                chip.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+                chip.classList.add('bg-primary', 'text-on-primary');
+            });
+        });
+    });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex justify-around items-center h-16"><a aria-current="page" class="flex flex-col items-center justify-center w-full h-full transition-colors text-primary" data-path="dashboard" href="#"><span class="material-symbols-outlined">dashboard</span><span class="font-label-caps text-label-caps">Hub</span></a><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="scan" href="#"><span class="material-symbols-outlined">center_focus_strong</span><span class="font-label-caps text-label-caps">Scan</span></a><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="history" href="#"><span class="material-symbols-outlined">history</span><span class="font-label-caps text-label-caps">Logs</span></a><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="insights" href="#"><span class="material-symbols-outlined">analytics</span><span class="font-label-caps text-label-caps">Data</span></a></div></nav></body></html>

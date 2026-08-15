@@ -1,0 +1,153 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-dim": "#d5dcd6", "error-container": "#ffdad6", "secondary-container": "#adedd3", "surface-bright": "#f5fbf5", "inverse-on-surface": "#ecf2ec", "on-secondary-fixed": "#002117", "inverse-surface": "#2c322e", "primary": "#006948", "tertiary-container": "#ba5551", "on-surface-variant": "#3d4a42", "on-secondary-fixed-variant": "#0b513d", "on-tertiary-fixed-variant": "#7f2928", "surface-container-low": "#eff5ef", "background": "#f5fbf5", "on-tertiary": "#ffffff", "surface-tint": "#006c4a", "secondary-fixed": "#b0f0d6", "on-surface": "#171d19", "outline": "#6d7a72", "on-primary-fixed": "#002114", "on-error": "#ffffff", "error": "#ba1a1a", "primary-fixed": "#85f8c4", "surface-variant": "#dee4de", "on-tertiary-container": "#fffbff", "surface-container-lowest": "#ffffff", "surface-container-high": "#e4eae4", "secondary-fixed-dim": "#95d3ba", "tertiary-fixed": "#ffdad7", "on-background": "#171d19", "tertiary-fixed-dim": "#ffb3ae", "on-primary-container": "#f5fff7", "on-error-container": "#93000a", "surface": "#f5fbf5", "primary-container": "#00855d", "on-tertiary-fixed": "#410004", "on-primary-fixed-variant": "#005137", "tertiary": "#9b3e3b", "on-secondary": "#ffffff", "outline-variant": "#bccac0", "surface-container-highest": "#dee4de", "secondary": "#2b6954", "surface-container": "#e9efe9", "on-primary": "#ffffff", "inverse-primary": "#68dba9", "on-secondary-container": "#306d58", "primary-fixed-dim": "#68dba9" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "unit": "4px", "gutter": "24px", "margin-mobile": "16px", "margin-desktop": "40px", "stack-md": "16px", "container-max-width": "1280px", "stack-lg": "32px", "stack-sm": "8px" }, "fontFamily": { "data-table": ["Inter"], "headline-lg": ["Inter"], "label-caps": ["JetBrains Mono"], "body-md": ["Inter"], "headline-lg-mobile": ["Inter"], "body-lg": ["Inter"], "display": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "data-table": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }] } } } }</script><style>@layer base { body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .pt-safe { padding-top: env(safe-area-inset-top); } } .backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background text-on-background font-body-md"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe"><div class="h-16 px-margin-mobile flex items-center justify-between gap-stack-sm"><div class="flex items-center gap-stack-sm"><img alt="NutriSafe AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkKH16P8q9m9Q6BGYQt4f52lXUp5xGUfP2BLzhK23jiyA0a5PIV0E9wc1lTYoHLc1QV6JWCUyvE_JUmnjrle_8djJHjxlGeUQFKD3VeVemjLKOzCUBhvhan5kTbqTi5cHI3LsbuLXoqsL9nqAX2_0rxAdEN14q27fLclr7zSW2-pi6KFPwnCKM7ntlqEcBBxsiNqiTk6IQKfKAGPJ7crnS1vRLNU_kVISwvqlU8IZsh9p6NpScjDs"/><span class="font-headline-md text-headline-md text-on-surface">Data</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="pt-16 pb-20 bg-background min-h-screen"><div class="flex flex-col w-full gap-stack-md px-margin-mobile">
+<!-- Time Toggle -->
+<div class="flex items-center bg-surface-container-high rounded-full p-[4px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] mt-margin-mobile">
+<button class="flex-1 py-2 text-center text-label-caps font-label-caps text-on-surface-variant transition-colors rounded-full">WEEKLY</button>
+<button class="flex-1 py-2 text-center text-label-caps font-label-caps text-on-surface-variant transition-colors rounded-full">MONTHLY</button>
+<button class="flex-1 py-2 text-center text-label-caps font-label-caps bg-surface text-on-surface shadow-[0_2px_4px_rgba(0,0,0,0.04)] rounded-full transition-shadow">YEARLY</button>
+</div>
+<!-- Annual Safety Score -->
+<div class="bg-surface-container-lowest rounded-2xl p-gutter shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col items-center relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-50"></div>
+<h2 class="text-headline-md font-headline-md text-on-surface mb-stack-sm relative z-10">Annual Safety Rating</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mb-stack-lg relative z-10">Aggregate diagnostic score</p>
+<div class="relative w-48 h-48 flex items-center justify-center z-10">
+<!-- Circular Progress (Inline SVG) -->
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle class="stroke-surface-container-highest" cx="50" cy="50" fill="none" r="45" stroke-dasharray="282.7" stroke-dashoffset="0" stroke-width="8"></circle>
+<!-- 94% = 282.7 * 0.94 = 265.7. Dashoffset = 282.7 - 265.7 = 17 -->
+<circle class="stroke-primary" cx="50" cy="50" fill="none" r="45" stroke-dasharray="282.7" stroke-dashoffset="17" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<div class="flex flex-col items-center">
+<span class="text-display font-display text-primary tracking-tight">94<span class="text-headline-lg font-headline-lg">%</span></span>
+<span class="text-label-caps font-label-caps text-primary tracking-widest uppercase mt-1 px-3 py-1 bg-primary/10 rounded-full">SAFE</span>
+</div>
+</div>
+</div>
+<!-- Annual Milestones -->
+<div class="grid grid-cols-2 gap-stack-md">
+<div class="bg-surface-container-lowest p-stack-md rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col gap-1">
+<span class="material-symbols-outlined text-on-surface-variant mb-1">qr_code_scanner</span>
+<span class="text-body-md font-body-md text-on-surface-variant">Total Scans</span>
+<span class="text-headline-lg-mobile font-headline-lg-mobile font-label-caps text-on-surface">1,420</span>
+</div>
+<div class="bg-surface-container-lowest p-stack-md rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col gap-1 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-tertiary-container"></div>
+<span class="material-symbols-outlined text-tertiary-container mb-1">warning</span>
+<span class="text-body-md font-body-md text-on-surface-variant leading-tight">Hazards Averted</span>
+<span class="text-headline-lg-mobile font-headline-lg-mobile font-label-caps text-on-surface">42</span>
+</div>
+<div class="bg-surface-container-lowest p-stack-md rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col gap-1 col-span-2">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary">verified</span>
+<span class="text-body-md font-body-md text-on-surface-variant">Safest Month</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg-mobile font-headline-lg-mobile text-on-surface">August</span>
+<span class="text-label-caps font-label-caps text-primary bg-primary/10 px-2 py-0.5 rounded">99% CLEAR</span>
+</div>
+</div>
+</div>
+<!-- Yearly Safety Breakdown Chart -->
+<div class="bg-surface-container-lowest rounded-2xl p-stack-md shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<div class="flex items-center justify-between mb-stack-md">
+<h3 class="text-body-lg font-body-lg text-on-surface font-semibold">Safety Distribution</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">bar_chart</span>
+</div>
+<!-- Simplified Bar Chart (Inline SVG) -->
+<div class="w-full h-40 relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 300 120">
+<!-- Grid Lines -->
+<line class="stroke-surface-container-highest" stroke-width="1" x1="0" x2="300" y1="20" y2="20"></line>
+<line class="stroke-surface-container-highest" stroke-width="1" x1="0" x2="300" y1="60" y2="60"></line>
+<line class="stroke-surface-container-highest" stroke-width="1" x1="0" x2="300" y1="100" y2="100"></line>
+<!-- Bars (Safe, Caution, Danger) -->
+<!-- Q1 -->
+<rect class="fill-primary" height="70" rx="2" width="20" x="20" y="30"></rect>
+<rect class="fill-tertiary-container" height="10" rx="2" width="20" x="20" y="20"></rect>
+<!-- Q2 -->
+<rect class="fill-primary" height="60" rx="2" width="20" x="95" y="40"></rect>
+<rect class="fill-secondary-container" height="15" rx="2" width="20" x="95" y="25"></rect>
+<!-- Q3 -->
+<rect class="fill-primary" height="90" rx="2" width="20" x="170" y="10"></rect>
+<!-- Q4 -->
+<rect class="fill-primary" height="50" rx="2" width="20" x="245" y="50"></rect>
+<rect class="fill-secondary-container" height="20" rx="2" width="20" x="245" y="30"></rect>
+<rect class="fill-tertiary-container" height="10" rx="2" width="20" x="245" y="20"></rect>
+</svg>
+<!-- X-Axis Labels -->
+<div class="absolute bottom-0 w-full flex justify-between px-[10px] text-label-caps font-label-caps text-on-surface-variant/60 -mb-6">
+<span>Q1</span>
+<span>Q2</span>
+<span>Q3</span>
+<span>Q4</span>
+</div>
+</div>
+<!-- Legend -->
+<div class="flex gap-4 mt-8 justify-center">
+<div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-primary"></div><span class="text-label-caps font-label-caps text-on-surface">SAFE</span></div>
+<div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-secondary-container"></div><span class="text-label-caps font-label-caps text-on-surface">CAUTION</span></div>
+<div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-tertiary-container"></div><span class="text-label-caps font-label-caps text-on-surface">HAZARD</span></div>
+</div>
+</div>
+<!-- Health Impact Summary -->
+<div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+<div class="p-stack-md bg-secondary/5 border-b border-surface-container-highest">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary">monitor_weight</span>
+<h3 class="text-body-lg font-body-lg text-on-surface font-semibold">Nutritional Impact</h3>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-label-caps font-label-caps text-on-surface-variant uppercase mb-1">Avg Daily Calories</p>
+<div class="flex items-baseline gap-1">
+<span class="text-headline-lg-mobile font-headline-lg-mobile font-label-caps text-on-surface">2,140</span>
+<span class="text-body-md font-body-md text-on-surface-variant">kcal</span>
+</div>
+</div>
+<div class="text-right">
+<span class="text-label-caps font-label-caps text-primary bg-primary/10 px-2 py-1 rounded-full">-4% vs Goal</span>
+</div>
+</div>
+</div>
+<!-- Macro Breakdown -->
+<div class="p-stack-md grid grid-cols-3 gap-2">
+<!-- Carbs -->
+<div class="flex flex-col items-center p-2 rounded-xl bg-surface-container-low">
+<span class="text-label-caps font-label-caps text-on-surface-variant mb-1">CARBS</span>
+<span class="text-body-lg font-body-lg font-label-caps text-on-surface font-semibold">45%</span>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-secondary w-[45%]"></div>
+</div>
+</div>
+<!-- Protein -->
+<div class="flex flex-col items-center p-2 rounded-xl bg-surface-container-low">
+<span class="text-label-caps font-label-caps text-on-surface-variant mb-1">PROTEIN</span>
+<span class="text-body-lg font-body-lg font-label-caps text-on-surface font-semibold">30%</span>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[30%]"></div>
+</div>
+</div>
+<!-- Fat -->
+<div class="flex flex-col items-center p-2 rounded-xl bg-surface-container-low">
+<span class="text-label-caps font-label-caps text-on-surface-variant mb-1">FAT</span>
+<span class="text-body-lg font-body-lg font-label-caps text-on-surface font-semibold">25%</span>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-tertiary w-[25%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Export Action -->
+<div class="mt-stack-sm mb-stack-lg">
+<button class="w-full bg-primary text-on-primary py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(0,105,72,0.2)] active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span class="text-body-md font-body-md font-semibold">Export Annual Report (PDF)</span>
+</button>
+</div>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex justify-around items-center h-16"><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined">dashboard</span><span class="font-label-caps text-label-caps">Hub</span></a><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="scan" href="#"><span class="material-symbols-outlined">center_focus_strong</span><span class="font-label-caps text-label-caps">Scan</span></a><a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant transition-colors" data-path="logs" href="#"><span class="material-symbols-outlined">history</span><span class="font-label-caps text-label-caps">Logs</span></a><a aria-current="page" class="flex flex-col items-center justify-center w-full h-full transition-colors text-primary" data-path="data" href="#"><span class="material-symbols-outlined">bar_chart</span><span class="font-label-caps text-label-caps">Data</span></a></div></nav></body></html>

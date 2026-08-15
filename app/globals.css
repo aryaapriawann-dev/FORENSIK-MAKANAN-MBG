@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #f5fbf5;
+  --color-surface-dim: #d5dcd6;
+  --color-surface-bright: #f5fbf5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff5ef;
+  --color-surface-container: #e9efe9;
+  --color-surface-container-high: #e4eae4;
+  --color-surface-container-highest: #dee4de;
+  --color-on-surface: #171d19;
+  --color-on-surface-variant: #3d4a42;
+
+  --color-primary: #006948;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #00855d;
+  --color-on-primary-container: #f5fff7;
+
+  --color-secondary: #2b6954;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #adedd3;
+  --color-on-secondary-container: #306d58;
+
+  --color-tertiary: #9b3e3b;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #ba5551;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+
+  --color-outline: #6d7a72;
+  --color-outline-variant: #bccac0;
+}
+
+@keyframes scanLine {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(280px); opacity: 0; }
+}
+
+.animate-scan-line {
+  animation: scanLine 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background-color: #f5fbf5;
+  color: #171d19;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
