@@ -948,15 +948,16 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   }
 
   // ============================================================
-  // KASUS 2: SAJIAN PIRING MULTI-KOMPONEN (Ikan Bakar + Lalapan + Sambal + Jeruk Nipis)
+  // KASUS 2: SAJIAN PIRING MULTI-KOMPONEN (Ikan Bakar + Lalapan + Sambal + Jeruk Nipis + Tomat)
   // ============================================================
-  // Jika gambar memiliki spektrum lalapan hijau (>10%), sambal/tomat, dan lauk utama cokelat/gelap
-  const isPlatedMultiDish =
-    !isOmpreng &&
-    (fullColor.greenRatio > 0.12 || fullColor.redRatio > 0.08) &&
-    (fullColor.darkBrownRatio > 0.08 || fullColor.yellowRatio > 0.08);
+  // Piring multi-lauk jika bukan ompreng dan bukan roti/buah tunggal murni
+  const isPureBreadOrFruit =
+    (fullColor.hasMold && fullColor.breadWheatRatio > 0.15) ||
+    (fullColor.breadWheatRatio > 0.45) ||
+    (fullColor.purpleDarkRatio > 0.35) ||
+    (fullColor.bananaYellowRatio > 0.45);
 
-  if (results.length === 0 && isPlatedMultiDish) {
+  if (results.length === 0 && !isPureBreadOrFruit) {
     const multiItems = await analyzePlatedDishMultiItem(canvas, fullColor);
     if (multiItems.length > 0) {
       results = multiItems;
@@ -969,7 +970,7 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   if (results.length === 0) {
     const classified = await classifyFoodSmart(canvas, fullColor);
     let nutrition: NutritionMasterItem | null = findNutritionByText(classified.foodCode);
-    if (!nutrition) nutrition = findFallbackNutrition(classified.foodCode) || findFallbackNutrition('IKAN_SEAFOOD')!;
+    if (!nutrition) nutrition = findFallbackNutrition(classified.foodCode) || findFallbackNutrition('ROTI_TAWAR')!;
 
     let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
     let forensicFlag = `Kondisi fisik visual ${nutrition.food_name} normal, segar, dan layak konsumsi.`;
