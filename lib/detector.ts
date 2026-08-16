@@ -899,74 +899,10 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
 
   let results: FoodItemAnalysis[] = [];
 
-  // ============================================================
-  // KASUS 1: NAMPAN OMPRENG LOGAM MBG TERVERIFIKASI
-  // ============================================================
-  if (isOmpreng) {
-    const compartments = getOmprengCompartments(canvasW, canvasH);
+  void isOmpreng;
+  void canvasW;
+  void canvasH;
 
-    for (const comp of compartments) {
-      let nutrition: NutritionMasterItem | null = findNutritionByText(comp.code);
-      if (!nutrition) nutrition = findFallbackNutrition(comp.code);
-
-      if (nutrition) {
-        let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-        let forensicFlag = `Kondisi fisik visual ${nutrition.food_name} segar, matang sempurna, dan higienis.`;
-        let recommendation = 'Layak dan aman untuk dikonsumsi.';
-
-        if (comp.code === 'SAMBAL_TERASI') {
-          safetyStatus = 'warning';
-          forensicFlag = 'Kondisi sambal/kecap segar. Konsumsi dalam batas wajar bagi lambung sensitif.';
-          recommendation = 'Aman dikonsumsi sebagai pelengkap cita rasa piring.';
-        } else if (nutrition.spoilage_signs && nutrition.spoilage_signs.length > 0) {
-          forensicFlag = `Kondisi visual segar. Indikator batas kesegaran: ${nutrition.spoilage_signs.slice(0, 2).join(', ')}.`;
-        }
-
-        results.push({
-          id: Math.random().toString(36).substring(2, 9),
-          name: nutrition.food_name,
-          category: nutrition.category,
-          confidence: 94,
-          safetyStatus,
-          forensicFlag,
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          fat: nutrition.fat,
-          carbs: nutrition.carbs,
-          fiber: nutrition.fiber,
-          vitaminA_mcg: nutrition.vitaminA_mcg || 0,
-          vitaminB_mg: nutrition.vitaminB_mg || 0,
-          vitaminC_mg: nutrition.vitaminC_mg || 0,
-          vitaminD_mcg: nutrition.vitaminD_mcg || 0,
-          calcium_mg: nutrition.calcium_mg || 0,
-          iron_mg: nutrition.iron_mg || 0,
-          recommendation,
-          box: comp.box,
-        });
-      }
-    }
-  }
-
-  // ============================================================
-  // KASUS 2: SAJIAN PIRING MULTI-KOMPONEN (Ikan Bakar + Lalapan + Sambal + Jeruk Nipis + Tomat)
-  // ============================================================
-  // Piring multi-lauk jika bukan ompreng dan bukan roti/buah tunggal murni
-  const isPureBreadOrFruit =
-    (fullColor.hasMold && fullColor.breadWheatRatio > 0.15) ||
-    (fullColor.breadWheatRatio > 0.45) ||
-    (fullColor.purpleDarkRatio > 0.35) ||
-    (fullColor.bananaYellowRatio > 0.45);
-
-  if (results.length === 0 && !isPureBreadOrFruit) {
-    const multiItems = await analyzePlatedDishMultiItem(canvas, fullColor);
-    if (multiItems.length > 0) {
-      results = multiItems;
-    }
-  }
-
-  // ============================================================
-  // KASUS 3: INFERENSI GAMBAR TUNGGAL (Roti Berjamur, Apel, Pisang, Dll)
-  // ============================================================
   if (results.length === 0) {
     const classified = await classifyFoodSmart(canvas, fullColor);
     let nutrition: NutritionMasterItem | null = findNutritionByText(classified.foodCode);
