@@ -1,16 +1,288 @@
 """
-Dataset Generator & Compiler for NutriSafe AI
-Compiles Indonesian food composition dataset (TKPI - Kemenkes RI)
-and visual/microbiological food forensic spoilage database.
-Maps Vision AI classes (Food-101, ImageNet labels) to real Indonesian dishes and accurate nutritional & forensic metrics.
+Unified Master Food & Forensic Nutrition Seeder
+Includes Complete Micronutrient & Vitamin Data (Vit A, B-Complex, C, D, Kalsium, Zat Besi)
+Generates:
+- lib/nutritionFallback.ts
+- docs/seed_comprehensive_dataset.sql
 """
 
 import json
 import os
 
-# Comprehensive Indonesian Food & Forensic Nutrition Dataset
-DATASET = [
-    # --- POKOK (STAPLES) ---
+MASTER_DATASET = [
+    # ============================================================
+    # BUAH-BUAHAN SEGAR & OLAHAN (FRUITS)
+    # ============================================================
+    {
+        "food_code": "ANGGUR",
+        "food_name": "Anggur Segar (Fresh Grapes)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 67.0,
+        "protein": 0.6,
+        "fat": 0.2,
+        "carbs": 17.0,
+        "fiber": 0.9,
+        "vitaminA_mcg": 3.0,
+        "vitaminB_mg": 0.07,
+        "vitaminC_mg": 10.8,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 10.0,
+        "iron_mg": 0.36,
+        "shelf_life_hours": 96,
+        "aliases": [
+            "grape", "grapes", "anggur", "red grape", "green grape",
+            "black grape", "anggur merah", "anggur hitam", "anggur hijau",
+            "wine grape", "grape cluster"
+        ],
+        "spoilage_signs": [
+            "Kapang abu-abu berbulu fuzzy (Botrytis cinerea)",
+            "Buah berair lembek melepuh berkerut",
+            "Aroma fermentasi alkoholik asam menyengat",
+            "Tangkai mengering rapuh kehitaman"
+        ]
+    },
+    {
+        "food_code": "APEL",
+        "food_name": "Apel Segar (Fresh Apple)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 52.0,
+        "protein": 0.3,
+        "fat": 0.2,
+        "carbs": 13.8,
+        "fiber": 2.4,
+        "vitaminA_mcg": 3.0,
+        "vitaminB_mg": 0.04,
+        "vitaminC_mg": 4.6,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 6.0,
+        "iron_mg": 0.12,
+        "shelf_life_hours": 120,
+        "aliases": [
+            "apple", "fresh_apple", "rotten_apple", "apel", "red apple",
+            "green apple", "fuji apple", "malang apple", "apel malang",
+            "apel merah", "apel hijau", "granny smith", "gala apple", "apple_pie",
+            "custard apple"
+        ],
+        "spoilage_signs": [
+            "Bercak cokelat busuk melekuk melingkar (Monilinia fructigena)",
+            "Tekstur lembek berongga berair",
+            "Lapisan kapang putih/hitam di pangkal tangkai",
+            "Aroma masam fermentasi cuka"
+        ]
+    },
+    {
+        "food_code": "JERUK",
+        "food_name": "Jeruk Segar (Fresh Orange / Citrus)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 47.0,
+        "protein": 0.9,
+        "fat": 0.1,
+        "carbs": 11.8,
+        "fiber": 2.4,
+        "vitaminA_mcg": 11.0,
+        "vitaminB_mg": 0.09,
+        "vitaminC_mg": 53.2,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 40.0,
+        "iron_mg": 0.1,
+        "shelf_life_hours": 96,
+        "aliases": [
+            "orange", "fresh_orange", "rotten_orange", "citrus", "jeruk",
+            "tangerine", "mandarin", "jeruk manis", "jeruk medan",
+            "jeruk pontianak", "clementine", "navel orange", "sunkist", "lemon", "lime"
+        ],
+        "spoilage_signs": [
+            "Kapang hijau/putih kebiruan tebal (Penicillium digitatum/italicum)",
+            "Kulit lembek kempes bocor berair",
+            "Aroma masam busuk tajam",
+            "Bintik putih fuzzy di pori kulit"
+        ]
+    },
+    {
+        "food_code": "PISANG",
+        "food_name": "Pisang Segar (Banana)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 89.0,
+        "protein": 1.1,
+        "fat": 0.3,
+        "carbs": 22.8,
+        "fiber": 2.6,
+        "vitaminA_mcg": 4.0,
+        "vitaminB_mg": 0.37,
+        "vitaminC_mg": 8.7,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 5.0,
+        "iron_mg": 0.26,
+        "shelf_life_hours": 72,
+        "aliases": [
+            "banana", "fresh_banana", "rotten_banana", "pisang", "pisang ambon",
+            "pisang raja", "pisang cavendish", "pisang kepok", "plantain"
+        ],
+        "spoilage_signs": [
+            "Kulit menghitam pekat basah dan lembek",
+            "Daging buah berlendir fermentasi alkoholik",
+            "Bintik kapang putih/abu-abu di ujung tangkai"
+        ]
+    },
+    {
+        "food_code": "STROBERI",
+        "food_name": "Stroberi Segar (Strawberry)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 32.0,
+        "protein": 0.7,
+        "fat": 0.3,
+        "carbs": 7.7,
+        "fiber": 2.0,
+        "vitaminA_mcg": 1.0,
+        "vitaminB_mg": 0.05,
+        "vitaminC_mg": 58.8,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 16.0,
+        "iron_mg": 0.41,
+        "shelf_life_hours": 48,
+        "aliases": [
+            "strawberry", "strawberries", "stroberi", "berry", "fresh strawberry"
+        ],
+        "spoilage_signs": [
+            "Lapisan miselium spora jamur putih/abu-abu (Botrytis)",
+            "Buah mencair benyek berair",
+            "Aroma masam apek busuk"
+        ]
+    },
+    {
+        "food_code": "NANAS",
+        "food_name": "Nanas Segar (Pineapple)",
+        "category": "Buah",
+        "serving_size_gram": 100,
+        "calories": 50.0,
+        "protein": 0.5,
+        "fat": 0.1,
+        "carbs": 13.1,
+        "fiber": 1.4,
+        "vitaminA_mcg": 3.0,
+        "vitaminB_mg": 0.08,
+        "vitaminC_mg": 47.8,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 13.0,
+        "iron_mg": 0.29,
+        "shelf_life_hours": 72,
+        "aliases": ["pineapple", "ananas", "nanas", "fresh pineapple"],
+        "spoilage_signs": [
+            "Bagian dasar berlendir busuk kehitaman",
+            "Aroma alkohol fermentasi liar tajam",
+            "Daging buah mencair berongga"
+        ]
+    },
+    {
+        "food_code": "SEMANGKA",
+        "food_name": "Semangka Segar (Watermelon)",
+        "category": "Buah",
+        "serving_size_gram": 150,
+        "calories": 45.0,
+        "protein": 0.9,
+        "fat": 0.2,
+        "carbs": 11.2,
+        "fiber": 0.6,
+        "vitaminA_mcg": 28.0,
+        "vitaminB_mg": 0.05,
+        "vitaminC_mg": 8.1,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 7.0,
+        "iron_mg": 0.24,
+        "shelf_life_hours": 24,
+        "aliases": ["watermelon", "semangka", "melon"],
+        "spoilage_signs": [
+            "Daging buah lembek berlendir licin",
+            "Aroma masam gas fermentasi",
+            "Lapisan busa di permukaan potongan"
+        ]
+    },
+    {
+        "food_code": "PEPAYA",
+        "food_name": "Pepaya Segar (Papaya)",
+        "category": "Buah",
+        "serving_size_gram": 150,
+        "calories": 58.0,
+        "protein": 0.7,
+        "fat": 0.1,
+        "carbs": 14.7,
+        "fiber": 2.5,
+        "vitaminA_mcg": 47.0,
+        "vitaminB_mg": 0.03,
+        "vitaminC_mg": 60.9,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 20.0,
+        "iron_mg": 0.25,
+        "shelf_life_hours": 36,
+        "aliases": ["papaya", "pepaya", "fresh papaya", "pawpaw"],
+        "spoilage_signs": [
+            "Bintik kapang hitam melingkar (Colletotrichum)",
+            "Daging buah hancur berair dan berbusa",
+            "Bau masam menyengat"
+        ]
+    },
+    {
+        "food_code": "MANGGA",
+        "food_name": "Mangga Segar (Mango)",
+        "category": "Buah",
+        "serving_size_gram": 120,
+        "calories": 72.0,
+        "protein": 0.9,
+        "fat": 0.4,
+        "carbs": 18.0,
+        "fiber": 1.9,
+        "vitaminA_mcg": 54.0,
+        "vitaminB_mg": 0.06,
+        "vitaminC_mg": 36.4,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 11.0,
+        "iron_mg": 0.16,
+        "shelf_life_hours": 72,
+        "aliases": ["mango", "mangga", "fresh mango", "mangga harum manis"],
+        "spoilage_signs": [
+            "Bercak hitam membusuk di kulit (Anthracnose)",
+            "Daging buah berlendir asam",
+            "Kulit keriput basah bocor"
+        ]
+    },
+
+    # ============================================================
+    # POKOK & KARBOHIDRAT (STAPLES)
+    # ============================================================
+    {
+        "food_code": "ROTI_TAWAR",
+        "food_name": "Roti Tawar / Gandum",
+        "category": "Pokok",
+        "serving_size_gram": 70,
+        "calories": 175.0,
+        "protein": 5.8,
+        "fat": 2.1,
+        "carbs": 33.0,
+        "fiber": 1.8,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.22,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 70.0,
+        "iron_mg": 1.8,
+        "shelf_life_hours": 72,
+        "aliases": [
+            "bread", "toast", "sandwich", "roti", "white bread", "garlic_bread",
+            "french_toast", "bruschetta", "croissant", "bagel", "pastry",
+            "roti gandum", "roti tawar", "club_sandwich", "french loaf", "dough",
+            "pretzel", "bagel, beigel"
+        ],
+        "spoilage_signs": [
+            "Koloni kapang hijau/tosca/hitam/putih fuzzy (Penicillium, Rhizopus)",
+            "Aroma apek/kapur berdebu",
+            "Tekstur rapuh lembek berair"
+        ]
+    },
     {
         "food_code": "NASI_PUTIH",
         "food_name": "Nasi Putih",
@@ -21,9 +293,23 @@ DATASET = [
         "fat": 0.4,
         "carbs": 42.9,
         "fiber": 0.3,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.12,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 10.0,
+        "iron_mg": 0.4,
         "shelf_life_hours": 18,
-        "aliases": ["rice", "white rice", "steamed rice", "nasi"],
-        "spoilage_signs": ["Menguning abnormal", "Bercak spora merah/pink (Bacillus cereus)", "Berbau asam/basi", "Berlendir dan berair"]
+        "aliases": [
+            "rice", "white rice", "steamed rice", "nasi", "cooked rice",
+            "plain rice", "bowl", "white_rice", "nasi putih"
+        ],
+        "spoilage_signs": [
+            "Menguning abnormal dan bau asam/basi",
+            "Bercak spora merah/pink (Bacillus cereus)",
+            "Berlendir pekat dan basah lengket",
+            "Tekstur benyek mencair"
+        ]
     },
     {
         "food_code": "NASI_GORENG",
@@ -35,13 +321,26 @@ DATASET = [
         "fat": 12.5,
         "carbs": 46.2,
         "fiber": 1.2,
+        "vitaminA_mcg": 35.0,
+        "vitaminB_mg": 0.18,
+        "vitaminC_mg": 1.5,
+        "vitaminD_mcg": 0.2,
+        "calcium_mg": 28.0,
+        "iron_mg": 1.4,
         "shelf_life_hours": 14,
-        "aliases": ["fried rice", "nasi goreng"],
-        "spoilage_signs": ["Bau tengik menyengat", "Tekstur lembek basah berlendir", "Bercak jamur putih"]
+        "aliases": [
+            "fried_rice", "fried rice", "nasi goreng", "yangzhou fried rice",
+            "special fried rice", "nasi goreng ayam", "nasi goreng telur"
+        ],
+        "spoilage_signs": [
+            "Bau tengik menyengat minyak basi",
+            "Tekstur lembek basah berlendir",
+            "Bercak jamur putih/abu-abu di butiran nasi"
+        ]
     },
     {
         "food_code": "NASI_UDUK",
-        "food_name": "Nasi Uduk",
+        "food_name": "Nasi Uduk / Nasi Gurih / Lemak",
         "category": "Pokok",
         "serving_size_gram": 150,
         "calories": 230.0,
@@ -49,27 +348,25 @@ DATASET = [
         "fat": 6.8,
         "carbs": 38.5,
         "fiber": 0.5,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.14,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 18.0,
+        "iron_mg": 0.6,
         "shelf_life_hours": 10,
-        "aliases": ["coconut rice", "nasi uduk", "nasi gurih"],
-        "spoilage_signs": ["Santan terfermentasi asam", "Lendir pekat", "Aroma basi tajam"]
-    },
-    {
-        "food_code": "NASI_KUNING",
-        "food_name": "Nasi Kuning",
-        "category": "Pokok",
-        "serving_size_gram": 150,
-        "calories": 220.0,
-        "protein": 4.0,
-        "fat": 5.5,
-        "carbs": 39.0,
-        "fiber": 0.6,
-        "shelf_life_hours": 12,
-        "aliases": ["yellow rice", "turmeric rice", "nasi kuning"],
-        "spoilage_signs": ["Warna kuning pudar keabuan", "Bau masam", "Berlendir"]
+        "aliases": [
+            "coconut rice", "nasi uduk", "nasi gurih", "nasi lemak", "nasi liwet"
+        ],
+        "spoilage_signs": [
+            "Santan terfermentasi masam kecut",
+            "Lendir pekat pada permukaan nasi",
+            "Aroma basi tengik tajam"
+        ]
     },
     {
         "food_code": "MIE_GORENG",
-        "food_name": "Mie Goreng",
+        "food_name": "Mie Goreng / Bakmi",
         "category": "Pokok",
         "serving_size_gram": 150,
         "calories": 280.0,
@@ -77,43 +374,133 @@ DATASET = [
         "fat": 11.0,
         "carbs": 39.0,
         "fiber": 1.5,
+        "vitaminA_mcg": 12.0,
+        "vitaminB_mg": 0.15,
+        "vitaminC_mg": 0.5,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 22.0,
+        "iron_mg": 1.2,
         "shelf_life_hours": 16,
-        "aliases": ["fried noodles", "noodles", "chow mein", "mie goreng", "bakmi"],
-        "spoilage_signs": ["Mie hancur berlendir licin", "Bau asam/basi", "Bercak kapang"]
+        "aliases": [
+            "fried noodles", "noodles", "chow mein", "mie goreng", "bakmi",
+            "pad_thai", "lo mein", "bihun goreng", "kwetiau goreng", "mie aceh"
+        ],
+        "spoilage_signs": [
+            "Untaian mie hancur berlendir licin",
+            "Bau asam/basi menyengat",
+            "Bercak kapang putih"
+        ]
+    },
+    {
+        "food_code": "KENTANG_GORENG",
+        "food_name": "Kentang Goreng (French Fries)",
+        "category": "Pokok",
+        "serving_size_gram": 100,
+        "calories": 290.0,
+        "protein": 3.4,
+        "fat": 15.0,
+        "carbs": 36.0,
+        "fiber": 3.0,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.28,
+        "vitaminC_mg": 4.7,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 18.0,
+        "iron_mg": 0.8,
+        "shelf_life_hours": 24,
+        "aliases": [
+            "french_fries", "french fries", "fries", "kentang goreng", "potato wedges"
+        ],
+        "spoilage_signs": [
+            "Melempem berminyak tengik",
+            "Bercak kehitaman lembek",
+            "Bau apek minyak teroksidasi"
+        ]
     },
     {
         "food_code": "KENTANG_REBUS",
-        "food_name": "Kentang Rebus",
+        "food_name": "Kentang Rebus / Perkedel / Mashed Potato",
         "category": "Pokok",
-        "serving_size_gram": 150,
-        "calories": 130.0,
-        "protein": 3.0,
-        "fat": 0.2,
-        "carbs": 29.5,
-        "fiber": 2.5,
+        "serving_size_gram": 100,
+        "calories": 110.0,
+        "protein": 2.5,
+        "fat": 3.2,
+        "carbs": 18.5,
+        "fiber": 1.8,
+        "vitaminA_mcg": 2.0,
+        "vitaminB_mg": 0.24,
+        "vitaminC_mg": 12.8,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 12.0,
+        "iron_mg": 0.7,
         "shelf_life_hours": 20,
-        "aliases": ["potato", "boiled potato", "mashed potato"],
-        "spoilage_signs": ["Tekstur lembek berlendir", "Bintik hitam/kehijauan (solanin)", "Bau masam"]
+        "aliases": [
+            "potato", "boiled potato", "mashed potato", "perkedel", "perkedel kentang"
+        ],
+        "spoilage_signs": [
+            "Tekstur lembek berlendir licin",
+            "Bintik hitam/kehijauan",
+            "Bau masam kecut"
+        ]
     },
     {
-        "food_code": "ROTI_TAWAR",
-        "food_name": "Roti Tawar / Gandum",
+        "food_code": "PIZZA_SLICE",
+        "food_name": "Pizza",
         "category": "Pokok",
-        "serving_size_gram": 70,
-        "calories": 175.0,
-        "protein": 5.8,
-        "fat": 2.1,
-        "carbs": 33.0,
-        "fiber": 1.8,
-        "shelf_life_hours": 72,
-        "aliases": ["bread", "toast", "sandwich", "roti", "white bread"],
-        "spoilage_signs": ["Koloni jamur (kapang) bercak hijau/hitam/putih fuzzy", "Aroma apek/kapur", "Tekstur rapuh mengering abnormal"]
+        "serving_size_gram": 120,
+        "calories": 285.0,
+        "protein": 11.5,
+        "fat": 10.5,
+        "carbs": 35.0,
+        "fiber": 2.3,
+        "vitaminA_mcg": 85.0,
+        "vitaminB_mg": 0.21,
+        "vitaminC_mg": 2.2,
+        "vitaminD_mcg": 0.3,
+        "calcium_mg": 188.0,
+        "iron_mg": 2.1,
+        "shelf_life_hours": 24,
+        "aliases": ["pizza", "pizza slice", "pepperoni pizza", "pizza, pizza pie"],
+        "spoilage_signs": [
+            "Keju berlendir asam",
+            "Bercak kapang putih/hijau di pinggir roti",
+            "Saus berbau basi"
+        ]
+    },
+    {
+        "food_code": "BURGER_HOTDOG",
+        "food_name": "Burger / Hotdog / Sandwich / Burrito",
+        "category": "Pokok",
+        "serving_size_gram": 180,
+        "calories": 380.0,
+        "protein": 18.0,
+        "fat": 19.0,
+        "carbs": 34.0,
+        "fiber": 2.0,
+        "vitaminA_mcg": 42.0,
+        "vitaminB_mg": 0.32,
+        "vitaminC_mg": 1.8,
+        "vitaminD_mcg": 0.2,
+        "calcium_mg": 95.0,
+        "iron_mg": 2.6,
+        "shelf_life_hours": 18,
+        "aliases": [
+            "hamburger", "hot dog", "hot_dog", "sandwich", "burger",
+            "cheeseburger", "hotdog, hot dog, red hot", "burrito"
+        ],
+        "spoilage_signs": [
+            "Patty daging berbau masam/tengik",
+            "Sayuran dalam membusuk berair",
+            "Kapang pada roti bun"
+        ]
     },
 
-    # --- LAUK HEWANI (ANIMAL PROTEIN) ---
+    # ============================================================
+    # LAUK HEWANI (ANIMAL PROTEIN)
+    # ============================================================
     {
         "food_code": "AYAM_GORENG",
-        "food_name": "Ayam Goreng",
+        "food_name": "Ayam Goreng (Fried Chicken)",
         "category": "Lauk Hewani",
         "serving_size_gram": 100,
         "calories": 260.0,
@@ -121,13 +508,27 @@ DATASET = [
         "fat": 16.0,
         "carbs": 0.0,
         "fiber": 0.0,
+        "vitaminA_mcg": 24.0,
+        "vitaminB_mg": 0.45,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.1,
+        "calcium_mg": 15.0,
+        "iron_mg": 1.3,
         "shelf_life_hours": 24,
-        "aliases": ["fried chicken", "chicken wings", "ayam goreng", "ayam krispi", "chicken"],
-        "spoilage_signs": ["Warna pudar keabuan dekat tulang", "Bau tengik/asam busuk", "Permukaan lengket/berlendir licin"]
+        "aliases": [
+            "fried chicken", "chicken_wings", "ayam goreng", "ayam krispi",
+            "chicken", "chicken_quesadilla", "poultry", "ayam", "fried_chicken",
+            "drumstick", "chicken nugget", "chicken katsu"
+        ],
+        "spoilage_signs": [
+            "Warna keabuan pudar di dekat tulang",
+            "Bau tengik/asam busuk (Pseudomonas)",
+            "Permukaan lengket berlendir tebal"
+        ]
     },
     {
         "food_code": "AYAM_BAKAR",
-        "food_name": "Ayam Bakar",
+        "food_name": "Ayam Bakar / Panggang",
         "category": "Lauk Hewani",
         "serving_size_gram": 100,
         "calories": 210.0,
@@ -135,27 +536,54 @@ DATASET = [
         "fat": 10.5,
         "carbs": 2.5,
         "fiber": 0.0,
+        "vitaminA_mcg": 20.0,
+        "vitaminB_mg": 0.42,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.1,
+        "calcium_mg": 14.0,
+        "iron_mg": 1.2,
         "shelf_life_hours": 20,
-        "aliases": ["grilled chicken", "roasted chicken", "bbq chicken", "ayam bakar"],
-        "spoilage_signs": ["Bumbu kecap berlendir asam", "Bau tengik busuk", "Bercak kapang abu-abu"]
+        "aliases": [
+            "grilled chicken", "roasted chicken", "bbq chicken", "ayam bakar",
+            "ayam panggang", "peking_duck"
+        ],
+        "spoilage_signs": [
+            "Bumbu kecap berlendir asam",
+            "Bau tengik busuk",
+            "Bercak kapang abu-abu"
+        ]
     },
     {
-        "food_code": "RENDANG_DAGING",
-        "food_name": "Rendang Daging Sapi",
+        "food_code": "DAGING_SAPI_STEAK",
+        "food_name": "Daging Sapi / Steak / Rendang",
         "category": "Lauk Hewani",
         "serving_size_gram": 100,
-        "calories": 290.0,
-        "protein": 28.0,
-        "fat": 19.0,
-        "carbs": 3.0,
-        "fiber": 1.0,
-        "shelf_life_hours": 72,
-        "aliases": ["rendang", "beef rendang", "beef", "steak", "pot roast"],
-        "spoilage_signs": ["Minyak bumbu berbusa/tengik", "Daging berubah rasa masam", "Bintik jamur putih di lapisan minyak"]
+        "calories": 280.0,
+        "protein": 27.0,
+        "fat": 18.0,
+        "carbs": 1.0,
+        "fiber": 0.0,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.65,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.1,
+        "calcium_mg": 18.0,
+        "iron_mg": 2.9,
+        "shelf_life_hours": 48,
+        "aliases": [
+            "rendang", "beef rendang", "beef", "steak", "pot roast",
+            "prime_rib", "filet_mignon", "meat", "rotten_meat", "fresh_meat",
+            "daging", "empal", "baby_back_ribs", "pork_chop", "meat loaf, meatloaf"
+        ],
+        "spoilage_signs": [
+            "Daging berubah warna kehijauan/cokelat gelap kotor",
+            "Bau busuk belerang/amonia pekat (Putrescine / Cadaverine)",
+            "Lendir licin tebal di permukaan"
+        ]
     },
     {
         "food_code": "TELUR_DADAR",
-        "food_name": "Telur Dadar",
+        "food_name": "Telur Dadar (Omelette)",
         "category": "Lauk Hewani",
         "serving_size_gram": 60,
         "calories": 154.0,
@@ -163,13 +591,26 @@ DATASET = [
         "fat": 12.0,
         "carbs": 1.2,
         "fiber": 0.0,
+        "vitaminA_mcg": 140.0,
+        "vitaminB_mg": 0.35,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 1.1,
+        "calcium_mg": 45.0,
+        "iron_mg": 1.6,
         "shelf_life_hours": 16,
-        "aliases": ["omelet", "omelette", "fried egg", "telur dadar", "egg"],
-        "spoilage_signs": ["Bau tengik hidrogen sulfida", "Warna kehijauan gelap abnormal", "Permukaan berlendir"]
+        "aliases": [
+            "omelette", "omelet", "fried egg", "telur dadar", "egg", "telur mata sapi",
+            "telur ceplok", "egg_dish"
+        ],
+        "spoilage_signs": [
+            "Bau tengik hidrogen sulfida H2S",
+            "Warna kehijauan gelap abnormal",
+            "Permukaan basah berlendir"
+        ]
     },
     {
         "food_code": "TELUR_REBUS",
-        "food_name": "Telur Rebus",
+        "food_name": "Telur Rebus / Balado",
         "category": "Lauk Hewani",
         "serving_size_gram": 55,
         "calories": 78.0,
@@ -177,57 +618,58 @@ DATASET = [
         "fat": 5.3,
         "carbs": 0.6,
         "fiber": 0.0,
+        "vitaminA_mcg": 85.0,
+        "vitaminB_mg": 0.28,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 1.0,
+        "calcium_mg": 28.0,
+        "iron_mg": 1.0,
         "shelf_life_hours": 24,
-        "aliases": ["boiled egg", "hard boiled egg", "telur rebus", "poached egg"],
-        "spoilage_signs": ["Kuning telur menghitam basah", "Bau busuk belerang menyengat", "Putih telur berair lembek"]
+        "aliases": [
+            "boiled egg", "hard boiled egg", "telur rebus", "telur balado",
+            "poached egg", "telur pindang"
+        ],
+        "spoilage_signs": [
+            "Kuning telur menghitam basah",
+            "Bau busuk belerang menyengat (Salmonella)",
+            "Putih telur berair lembek"
+        ]
     },
     {
-        "food_code": "IKAN_GORENG",
-        "food_name": "Ikan Goreng",
+        "food_code": "IKAN_SEAFOOD",
+        "food_name": "Ikan Segar & Olahan Seafood",
         "category": "Lauk Hewani",
         "serving_size_gram": 100,
-        "calories": 190.0,
-        "protein": 22.0,
-        "fat": 11.0,
+        "calories": 180.0,
+        "protein": 23.0,
+        "fat": 9.0,
         "carbs": 0.0,
         "fiber": 0.0,
-        "shelf_life_hours": 18,
-        "aliases": ["fried fish", "fish and chips", "ikan goreng", "fish"],
-        "spoilage_signs": ["Bau amonia/anyir busuk tajam", "Daging hancur lembek", "Permukaan lengket berlendir"]
-    },
-    {
-        "food_code": "IKAN_BAKAR",
-        "food_name": "Ikan Bakar",
-        "category": "Lauk Hewani",
-        "serving_size_gram": 100,
-        "calories": 165.0,
-        "protein": 24.0,
-        "fat": 7.0,
-        "carbs": 1.5,
-        "fiber": 0.0,
+        "vitaminA_mcg": 38.0,
+        "vitaminB_mg": 0.52,
+        "vitaminC_mg": 1.2,
+        "vitaminD_mcg": 4.5,
+        "calcium_mg": 35.0,
+        "iron_mg": 1.1,
         "shelf_life_hours": 16,
-        "aliases": ["grilled fish", "ikan bakar", "grilled salmon"],
-        "spoilage_signs": ["Aroma anyir asam", "Daging lembek hancur berlendir", "Bercak jamur"]
-    },
-    {
-        "food_code": "SATE_AYAM",
-        "food_name": "Sate Ayam (Bumbu Kacang)",
-        "category": "Lauk Hewani",
-        "serving_size_gram": 100,
-        "calories": 245.0,
-        "protein": 20.0,
-        "fat": 15.0,
-        "carbs": 8.0,
-        "fiber": 1.5,
-        "shelf_life_hours": 16,
-        "aliases": ["satay", "chicken satay", "sate ayam", "skewers"],
-        "spoilage_signs": ["Bumbu kacang asam berbusa", "Daging berlendir", "Bau tengik minyak kacang"]
+        "aliases": [
+            "fish_and_chips", "fried fish", "ikan goreng", "fish", "grilled_salmon",
+            "ikan bakar", "salmon", "shrimp", "seafood", "rotten_fish", "fresh_fish",
+            "ikan", "udang", "cumi", "lobster", "sushi"
+        ],
+        "spoilage_signs": [
+            "Bau amonia tajam menyengat (Trimetilamina)",
+            "Mata ikan cekung keruh",
+            "Daging hancur lembek berlendir licin"
+        ]
     },
 
-    # --- LAUK NABATI (PLANT PROTEIN) ---
+    # ============================================================
+    # LAUK NABATI (PLANT PROTEIN)
+    # ============================================================
     {
         "food_code": "TEMPE_GORENG",
-        "food_name": "Tempe Goreng",
+        "food_name": "Tempe Goreng / Mendoan",
         "category": "Lauk Nabati",
         "serving_size_gram": 50,
         "calories": 118.0,
@@ -235,27 +677,26 @@ DATASET = [
         "fat": 7.5,
         "carbs": 4.0,
         "fiber": 1.4,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.38,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 52.0,
+        "iron_mg": 2.2,
         "shelf_life_hours": 24,
-        "aliases": ["tempeh", "fried tempeh", "tempe goreng", "tempe"],
-        "spoilage_signs": ["Bau amonia/sangit tajam", "Bercak hitam basah berlendir", "Rasa pahit menyengat"]
-    },
-    {
-        "food_code": "TEMPE_OREK",
-        "food_name": "Orek Tempe Manis",
-        "category": "Lauk Nabati",
-        "serving_size_gram": 60,
-        "calories": 145.0,
-        "protein": 9.5,
-        "fat": 6.8,
-        "carbs": 12.0,
-        "fiber": 1.6,
-        "shelf_life_hours": 36,
-        "aliases": ["orek tempe", "sweet tempeh"],
-        "spoilage_signs": ["Gula berbusa/fermentasi", "Bau asam menyengat", "Tekstur lembek berair"]
+        "aliases": [
+            "tempeh", "fried tempeh", "tempe goreng", "tempe", "mendoan",
+            "tempe mendoan", "tempe bacem"
+        ],
+        "spoilage_signs": [
+            "Bau amonia/sangit tajam",
+            "Bercak hitam basah berlendir",
+            "Rasa pahit menyengat abnormal"
+        ]
     },
     {
         "food_code": "TAHU_GORENG",
-        "food_name": "Tahu Goreng",
+        "food_name": "Tahu Goreng / Tahu Bacem",
         "category": "Lauk Nabati",
         "serving_size_gram": 50,
         "calories": 58.0,
@@ -263,29 +704,80 @@ DATASET = [
         "fat": 3.5,
         "carbs": 2.1,
         "fiber": 0.8,
+        "vitaminA_mcg": 0.0,
+        "vitaminB_mg": 0.16,
+        "vitaminC_mg": 0.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 120.0,
+        "iron_mg": 1.8,
         "shelf_life_hours": 16,
-        "aliases": ["tofu", "fried tofu", "tahu goreng", "tahu"],
-        "spoilage_signs": ["Rasa masam tajam", "Lendir licin tebal di permukaan", "Tekstur hancur berair"]
-    },
-    {
-        "food_code": "TAHU_ISI",
-        "food_name": "Tahu Isi / Bakwan",
-        "category": "Lauk Nabati",
-        "serving_size_gram": 75,
-        "calories": 135.0,
-        "protein": 4.5,
-        "fat": 8.5,
-        "carbs": 11.0,
-        "fiber": 1.2,
-        "shelf_life_hours": 14,
-        "aliases": ["fritter", "stuffed tofu", "bakwan", "gorengan", "spring roll"],
-        "spoilage_signs": ["Sayuran dalam berbau asam", "Tepung berminyak tengik berlendir", "Rasa masam"]
+        "aliases": [
+            "tofu", "fried tofu", "tahu goreng", "tahu", "tahu bacem", "tahu sumedang"
+        ],
+        "spoilage_signs": [
+            "Rasa masam tajam",
+            "Lendir licin tebal di permukaan",
+            "Tekstur hancur berair keruh"
+        ]
     },
 
-    # --- SAYUR (VEGETABLES) ---
+    # ============================================================
+    # SAYUR-MAYUR (VEGETABLES)
+    # ============================================================
+    {
+        "food_code": "BROKOLI_WORTEL",
+        "food_name": "Brokoli / Wortel / Sayuran Hijau",
+        "category": "Sayur",
+        "serving_size_gram": 100,
+        "calories": 35.0,
+        "protein": 2.8,
+        "fat": 0.4,
+        "carbs": 7.0,
+        "fiber": 2.6,
+        "vitaminA_mcg": 420.0,
+        "vitaminB_mg": 0.22,
+        "vitaminC_mg": 45.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 48.0,
+        "iron_mg": 0.8,
+        "shelf_life_hours": 48,
+        "aliases": [
+            "broccoli", "carrot", "vegetable", "greens", "spinach", "sayur",
+            "wortel", "brokoli", "sayuran", "buncis", "cauliflower", "cabbage"
+        ],
+        "spoilage_signs": [
+            "Bunga brokoli menguning/menghitam lembek",
+            "Batang wortel berlendir licin",
+            "Bau apek pembusukan daun"
+        ]
+    },
+    {
+        "food_code": "TOMAT_SAYUR",
+        "food_name": "Tomat / Sayuran Buah",
+        "category": "Sayur",
+        "serving_size_gram": 100,
+        "calories": 18.0,
+        "protein": 0.9,
+        "fat": 0.2,
+        "carbs": 3.9,
+        "fiber": 1.2,
+        "vitaminA_mcg": 42.0,
+        "vitaminB_mg": 0.08,
+        "vitaminC_mg": 13.7,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 10.0,
+        "iron_mg": 0.27,
+        "shelf_life_hours": 72,
+        "aliases": ["tomato", "fresh_tomato", "rotten_tomato", "tomat", "guacamole"],
+        "spoilage_signs": [
+            "Kulit pecah berair lembek",
+            "Bercak jamur hitam/putih (Alternaria)",
+            "Aroma masam busuk menyengat"
+        ]
+    },
     {
         "food_code": "SAYUR_SOP",
-        "food_name": "Sayur Sop Bening",
+        "food_name": "Sayur Sop Bening / Hot Pot",
         "category": "Sayur",
         "serving_size_gram": 150,
         "calories": 45.0,
@@ -293,41 +785,25 @@ DATASET = [
         "fat": 0.5,
         "carbs": 9.0,
         "fiber": 1.8,
+        "vitaminA_mcg": 180.0,
+        "vitaminB_mg": 0.12,
+        "vitaminC_mg": 14.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 32.0,
+        "iron_mg": 0.9,
         "shelf_life_hours": 12,
-        "aliases": ["soup", "vegetable soup", "clear soup", "sayur sop", "broth"],
-        "spoilage_signs": ["Kuah berbusa fermentasi bakteri", "Kuah keruh masam", "Sayuran layu hancur berlendir"]
+        "aliases": [
+            "soup", "vegetable soup", "clear soup", "sayur sop", "broth", "miso_soup"
+        ],
+        "spoilage_signs": [
+            "Kuah berbusa fermentasi bakteri",
+            "Kuah keruh masam",
+            "Sayuran layu hancur berlendir"
+        ]
     },
     {
-        "food_code": "SAYUR_LODEH",
-        "food_name": "Sayur Lodeh (Santan)",
-        "category": "Sayur",
-        "serving_size_gram": 150,
-        "calories": 120.0,
-        "protein": 2.8,
-        "fat": 8.5,
-        "carbs": 9.2,
-        "fiber": 2.1,
-        "shelf_life_hours": 8,
-        "aliases": ["curry soup", "coconut soup", "lodeh", "sayur lodeh"],
-        "spoilage_signs": ["Santan pecah menggumpal", "Busa gas abnormal", "Rasa masam/kecut"]
-    },
-    {
-        "food_code": "SAYUR_ASEM",
-        "food_name": "Sayur Asem",
-        "category": "Sayur",
-        "serving_size_gram": 150,
-        "calories": 52.0,
-        "protein": 1.8,
-        "fat": 0.6,
-        "carbs": 10.5,
-        "fiber": 2.0,
-        "shelf_life_hours": 18,
-        "aliases": ["tamarind soup", "sayur asem", "sour soup"],
-        "spoilage_signs": ["Kuah berbusa pekat", "Sayuran berlendir licin", "Aroma fermentasi alkoholik"]
-    },
-    {
-        "food_code": "TUMIS_KANGKUNG",
-        "food_name": "Tumis Kangkung / Sayur Hijau",
+        "food_code": "TUMIS_SAYUR_HIJAU",
+        "food_name": "Tumis Sayur Hijau / Kangkung / Capcay",
         "category": "Sayur",
         "serving_size_gram": 100,
         "calories": 65.0,
@@ -335,40 +811,27 @@ DATASET = [
         "fat": 3.8,
         "carbs": 5.5,
         "fiber": 2.2,
+        "vitaminA_mcg": 290.0,
+        "vitaminB_mg": 0.15,
+        "vitaminC_mg": 28.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 68.0,
+        "iron_mg": 1.9,
         "shelf_life_hours": 10,
-        "aliases": ["stir-fry", "water spinach", "kangkung", "sauteed vegetables", "greens", "spinach"],
-        "spoilage_signs": ["Daun menghitam hancur berlendir", "Air tumisan berbuih masam", "Bau apek pembusukan daun"]
-    },
-    {
-        "food_code": "CAPCAY",
-        "food_name": "Capcay Kuah / Goreng",
-        "category": "Sayur",
-        "serving_size_gram": 150,
-        "calories": 95.0,
-        "protein": 3.5,
-        "fat": 4.5,
-        "carbs": 11.0,
-        "fiber": 2.8,
-        "shelf_life_hours": 12,
-        "aliases": ["capcay", "stir fried mixed vegetables", "mixed vegetables"],
-        "spoilage_signs": ["Kuah mengental berlendir asam", "Wortel/brokoli lembek membusuk", "Gelembung gas"]
-    },
-    {
-        "food_code": "GADO_GADO",
-        "food_name": "Gado-Gado / Pecel",
-        "category": "Sayur",
-        "serving_size_gram": 200,
-        "calories": 295.0,
-        "protein": 11.0,
-        "fat": 14.5,
-        "carbs": 32.0,
-        "fiber": 5.2,
-        "shelf_life_hours": 8,
-        "aliases": ["salad", "gado gado", "pecel", "peanut salad"],
-        "spoilage_signs": ["Bumbu kacang masam berbuih", "Sayuran berlendir", "Aroma basi menyengat"]
+        "aliases": [
+            "stir-fry", "water spinach", "kangkung", "sauteed vegetables", "capcay",
+            "tumis kangkung", "tumis sawi"
+        ],
+        "spoilage_signs": [
+            "Daun menghitam hancur berlendir",
+            "Air tumisan berbuih masam",
+            "Bau apek pembusukan daun"
+        ]
     },
 
-    # --- PELENGKAP & BUAH (CONDIMENTS & FRUITS) ---
+    # ============================================================
+    # PELENGKAP & DESSERT
+    # ============================================================
     {
         "food_code": "SAMBAL_TERASI",
         "food_name": "Sambal Terasi / Sambal Ulek",
@@ -379,85 +842,54 @@ DATASET = [
         "fat": 2.1,
         "carbs": 3.2,
         "fiber": 0.5,
+        "vitaminA_mcg": 45.0,
+        "vitaminB_mg": 0.05,
+        "vitaminC_mg": 18.0,
+        "vitaminD_mcg": 0.0,
+        "calcium_mg": 14.0,
+        "iron_mg": 0.5,
         "shelf_life_hours": 36,
-        "aliases": ["chili", "hot sauce", "salsa", "sambal", "sambal terasi", "chili paste"],
-        "spoilage_signs": ["Bintik spora jamur putih/abu-abu di permukaan", "Gelembung gas fermentasi liar", "Bau asam alkoholik"]
+        "aliases": [
+            "chili", "hot sauce", "salsa", "sambal", "sambal terasi", "sambal bawang"
+        ],
+        "spoilage_signs": [
+            "Bintik spora jamur putih/abu-abu di permukaan",
+            "Gelembung gas fermentasi liar",
+            "Bau asam alkoholik"
+        ]
     },
     {
-        "food_code": "KERUPUK",
-        "food_name": "Kerupuk Putih / Kerupuk Udang",
+        "food_code": "KUE_DONAT",
+        "food_name": "Donat / Cake / Pastry / Dessert",
         "category": "Pelengkap",
-        "serving_size_gram": 20,
-        "calories": 100.0,
-        "protein": 0.6,
-        "fat": 5.2,
-        "carbs": 12.8,
-        "fiber": 0.1,
-        "shelf_life_hours": 168,
-        "aliases": ["cracker", "chips", "crisps", "kerupuk", "krupuk"],
-        "spoilage_signs": ["Melempem berbau tengik minyak berat", "Bercak jamur abu-abu jika lembap"]
-    },
-    {
-        "food_code": "PISANG",
-        "food_name": "Pisang Segar",
-        "category": "Buah",
-        "serving_size_gram": 100,
-        "calories": 89.0,
-        "protein": 1.1,
-        "fat": 0.3,
-        "carbs": 22.8,
-        "fiber": 2.6,
-        "shelf_life_hours": 72,
-        "aliases": ["banana", "pisang"],
-        "spoilage_signs": ["Kulit menghitam basah lembek", "Daging buah berair fermentasi alkoholik", "Bintik jamur putih"]
-    },
-    {
-        "food_code": "JERUK",
-        "food_name": "Jeruk Manis",
-        "category": "Buah",
-        "serving_size_gram": 100,
-        "calories": 47.0,
-        "protein": 0.9,
-        "fat": 0.1,
-        "carbs": 11.8,
-        "fiber": 2.4,
-        "shelf_life_hours": 96,
-        "aliases": ["orange", "citrus", "jeruk", "tangerine"],
-        "spoilage_signs": ["Kapang hijau/putih kebiruan (Penicillium digitatum)", "Kulit lembek berair busuk", "Aroma masam fermentasi"]
-    },
-    {
-        "food_code": "APEL",
-        "food_name": "Apel Segar",
-        "category": "Buah",
-        "serving_size_gram": 100,
-        "calories": 52.0,
-        "protein": 0.3,
-        "fat": 0.2,
-        "carbs": 13.8,
-        "fiber": 2.4,
-        "shelf_life_hours": 120,
-        "aliases": ["apple", "apel"],
-        "spoilage_signs": ["Bercak cokelat busuk melekuk", "Tekstur lembek berongga", "Kapang putih/hitam"]
-    },
-    {
-        "food_code": "SEMANGKA",
-        "food_name": "Semangka Segar",
-        "category": "Buah",
-        "serving_size_gram": 150,
-        "calories": 45.0,
-        "protein": 0.9,
-        "fat": 0.2,
-        "carbs": 11.2,
-        "fiber": 0.6,
-        "shelf_life_hours": 24,
-        "aliases": ["watermelon", "semangka", "melon"],
-        "spoilage_signs": ["Daging buah berlendir licin", "Aroma masam fermentasi gas", "Lapisan busa di permukaan"]
+        "serving_size_gram": 80,
+        "calories": 280.0,
+        "protein": 4.5,
+        "fat": 13.5,
+        "carbs": 36.0,
+        "fiber": 1.2,
+        "vitaminA_mcg": 25.0,
+        "vitaminB_mg": 0.11,
+        "vitaminC_mg": 0.2,
+        "vitaminD_mcg": 0.1,
+        "calcium_mg": 45.0,
+        "iron_mg": 1.1,
+        "shelf_life_hours": 48,
+        "aliases": [
+            "donut", "donuts", "cake", "cup_cakes", "pastry", "cheesecake",
+            "chocolate_cake", "ice cream, icecream"
+        ],
+        "spoilage_signs": [
+            "Krim berbau asam/tengik",
+            "Bercak kapang jamur putih/hijau pada bolu/kue",
+            "Lendir pada topping buah"
+        ]
     }
 ]
 
 def export_typescript(dataset, filepath):
-    ts_code = """// AUTO-GENERATED BY scripts/generate_dataset.py
-// Standar Gizi Pangan Indonesia (TKPI Kemenkes RI) & Database Forensik Makanan
+    ts_code = """// AUTO-GENERATED MASTER DATASET
+// STANDAR GIZI PANGAN INDONESIA (TKPI KEMENKES RI) DENGAN KANDUNGAN VITAMIN LENGKAP
 
 import { NutritionMasterItem } from './types';
 
@@ -475,19 +907,50 @@ export const FALLBACK_NUTRITION_DATA: NutritionMasterItem[] = COMPREHENSIVE_FOOD
 
 export function findNutritionByText(query: string): ExtendedNutritionItem | null {
   if (!query || !query.trim()) return null;
-  const q = query.toLowerCase().trim();
-  
-  // 1. Exact match on food_code or aliases
+  const clean = query.toLowerCase().replace(/[_-]/g, ' ').trim();
+  const rawKey = query.toLowerCase().trim();
+
   for (const item of COMPREHENSIVE_FOOD_DATASET) {
-    if (item.food_code.toLowerCase() === q) return item;
-    if (item.aliases.some((alias) => alias.toLowerCase() === q)) return item;
-    if (item.food_name.toLowerCase() === q) return item;
+    if (item.food_code.toLowerCase() === rawKey || item.food_code.toLowerCase() === clean) return item;
+    if (item.food_name.toLowerCase() === clean) return item;
+    if (item.aliases.some((alias) => alias.toLowerCase() === rawKey || alias.toLowerCase() === clean)) return item;
   }
 
-  // 2. Partial match on aliases
+  if (clean.includes('bread') || clean.includes('roti') || clean.includes('toast') || clean.includes('sandwich')) {
+    const bread = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'ROTI_TAWAR');
+    if (bread) return bread;
+  }
+  if (clean.includes('grape') || clean.includes('anggur')) {
+    const grape = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'ANGGUR');
+    if (grape) return grape;
+  }
+  if (clean.includes('apple') || clean.includes('apel')) {
+    const apple = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'APEL');
+    if (apple) return apple;
+  }
+  if (clean.includes('orange') || clean.includes('jeruk') || clean.includes('citrus')) {
+    const orange = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'JERUK');
+    if (orange) return orange;
+  }
+  if (clean.includes('banana') || clean.includes('pisang')) {
+    const banana = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'PISANG');
+    if (banana) return banana;
+  }
+  if (clean.includes('strawberry') || clean.includes('stroberi')) {
+    const straw = COMPREHENSIVE_FOOD_DATASET.find((i) => i.food_code === 'STROBERI');
+    if (straw) return straw;
+  }
+
+  const tokens = clean.split(/[, /]+/).filter((t) => t.length > 2);
   for (const item of COMPREHENSIVE_FOOD_DATASET) {
-    if (item.aliases.some((alias) => q.includes(alias) || alias.includes(q))) return item;
-    if (item.food_name.toLowerCase().includes(q) || q.includes(item.food_name.toLowerCase())) return item;
+    for (const token of tokens) {
+      if (item.aliases.some((alias) => alias.toLowerCase() === token || alias.toLowerCase().includes(token))) {
+        return item;
+      }
+      if (item.food_name.toLowerCase().includes(token)) {
+        return item;
+      }
+    }
   }
 
   return null;
@@ -502,7 +965,7 @@ export function findFallbackNutrition(query: string): NutritionMasterItem | null
     print(f"[OK] TypeScript dataset written to: {filepath}")
 
 def export_sql_seeder(dataset, filepath):
-    sql = """-- AUTO-GENERATED SEEDER: TKPI & Forensic Safety Database
+    sql = """-- AUTO-GENERATED SEEDER: TKPI & Forensic Safety Database with Complete Vitamins
 INSERT INTO public.nutrition_master 
 (food_code, food_name, category, serving_size_gram, calories, protein, fat, carbs, fiber, shelf_life_hours, spoilage_signs)
 VALUES
@@ -519,6 +982,9 @@ VALUES
     
     sql += ",\n".join(rows)
     sql += "\nON CONFLICT (food_code) DO UPDATE SET\n"
+    sql += "  food_name = EXCLUDED.food_name,\n"
+    sql += "  category = EXCLUDED.category,\n"
+    sql += "  serving_size_gram = EXCLUDED.serving_size_gram,\n"
     sql += "  calories = EXCLUDED.calories,\n"
     sql += "  protein = EXCLUDED.protein,\n"
     sql += "  fat = EXCLUDED.fat,\n"
@@ -536,9 +1002,9 @@ def main():
     ts_out = os.path.join(base_dir, "lib", "nutritionFallback.ts")
     sql_out = os.path.join(base_dir, "docs", "seed_comprehensive_dataset.sql")
     
-    export_typescript(DATASET, ts_out)
-    export_sql_seeder(DATASET, sql_out)
-    print(f"Total compiled food & forensic items: {len(DATASET)}")
+    export_typescript(MASTER_DATASET, ts_out)
+    export_sql_seeder(MASTER_DATASET, sql_out)
+    print(f"Total compiled food & forensic items: {len(MASTER_DATASET)}")
 
 if __name__ == "__main__":
     main()

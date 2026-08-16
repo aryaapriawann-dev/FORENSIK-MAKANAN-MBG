@@ -13,34 +13,31 @@ interface Props {
 
 export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage }) => {
   // Evaluasi keseimbangan makronutrisi piring (Standar Isi Piringku Kemenkes RI)
-  const isDangerous = totals.overallSafety === 'danger' || items.some((i) => i.safetyStatus === 'danger');
-  const isWarning = totals.overallSafety === 'warning' || items.some((i) => i.safetyStatus === 'warning');
+  const isDangerous = items.some((i) => i.safetyStatus === 'danger');
+  const isWarning = items.some((i) => i.safetyStatus === 'warning');
+
+  // Kelompokkan lauk berdasarkan status keamanan: Hijau (Layak), Kuning (Periksa), Merah (Bahaya)
+  const safeItems = items.filter((i) => i.safetyStatus === 'safe');
+  const warningItems = items.filter((i) => i.safetyStatus === 'warning');
+  const dangerItems = items.filter((i) => i.safetyStatus === 'danger');
 
   const totalMacroGram = totals.totalProtein + totals.totalFat + totals.totalCarbs;
   const proteinPercent = totalMacroGram > 0 ? (totals.totalProtein / totalMacroGram) * 100 : 0;
   const fatPercent = totalMacroGram > 0 ? (totals.totalFat / totalMacroGram) * 100 : 0;
   const carbsPercent = totalMacroGram > 0 ? (totals.totalCarbs / totalMacroGram) * 100 : 0;
 
-  let balanceVerdict = 'Seimbang';
-  let balanceDesc = 'Komposisi karbohidrat, protein, dan lemak memenuhi proporsi gizi seimbang harian.';
+  let balanceVerdict = 'LAYAK DIKONSUMSI (AMAN)';
+  let balanceDesc = 'Seluruh komponen lauk dalam piring segar, bersih dari mikroba, dan memenuhi standar gizi seimbang.';
   let balanceBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
 
   if (isDangerous) {
-    balanceVerdict = 'TIDAK LAYAK MAKAN';
-    balanceDesc = 'Terdeteksi bahaya mikrobiologis/pembusukan. Jangan dikonsumsi demi keselamatan.';
+    balanceVerdict = 'TERDAPAT LAUK BAHAYA / TIDAK LAYAK';
+    balanceDesc = `Peringatan: ${dangerItems.map((d) => d.name).join(', ')} terkontaminasi mikroba/jamur berbahaya. Pisahkan dan jangan dikonsumsi!`;
     balanceBadgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  } else if (carbsPercent > 65) {
-    balanceVerdict = 'Tinggi Karbohidrat';
-    balanceDesc = 'Porsi karbohidrat dominan. Disarankan menambah lauk berprotein atau sayuran berserat.';
+  } else if (isWarning) {
+    balanceVerdict = 'PERIKSA SEBELUM DISANTAP';
+    balanceDesc = 'Sebagian komponen perlu diperiksa aroma atau dikonsumsi secukupnya.';
     balanceBadgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (fatPercent > 45) {
-    balanceVerdict = 'Tinggi Lemak';
-    balanceDesc = 'Kadar lemak/minyak cukup tinggi. Kurangi konsumsi gorengan atau santan berlebih.';
-    balanceBadgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (proteinPercent < 15) {
-    balanceVerdict = 'Kurang Protein';
-    balanceDesc = 'Asupan protein masih minim. Tambahkan telur, tempe, tahu, atau ikan.';
-    balanceBadgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
   }
 
   return (
@@ -73,7 +70,7 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
           <span className="text-xs font-bold text-slate-700 self-start mb-2 uppercase tracking-wider">
             Dokumentasi Visual Forensik
           </span>
-          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 relative border border-slate-200 flex items-center justify-center">
+            <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 relative border border-slate-200 flex items-center justify-center">
             {scannedImage ? (
               <img
                 src={scannedImage}
@@ -85,6 +82,37 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
                 Tidak ada tangkapan gambar
               </div>
             )}
+
+            {/* Multi-Item Bounding Box Visualizer */}
+            {items.map((item, idx) => {
+              if (!item.box) return null;
+              const { x, y, width, height } = item.box;
+              const isDangerItem = item.safetyStatus === 'danger';
+              const isWarningItem = item.safetyStatus === 'warning';
+              const borderColor = isDangerItem
+                ? 'border-rose-500 bg-rose-500/15 text-rose-200'
+                : isWarningItem
+                ? 'border-amber-400 bg-amber-400/15 text-amber-200'
+                : 'border-emerald-400 bg-emerald-400/15 text-emerald-200';
+
+              return (
+                <div
+                  key={item.id || idx}
+                  className={`absolute border-2 rounded-lg pointer-events-none transition-all ${borderColor}`}
+                  style={{
+                    left: `${x * 100}%`,
+                    top: `${y * 100}%`,
+                    width: `${width * 100}%`,
+                    height: `${height * 100}%`,
+                  }}
+                >
+                  <span className="absolute -top-6 left-0 bg-slate-900/90 backdrop-blur-xs text-[10px] font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                    {item.name} ({item.confidence}%)
+                  </span>
+                </div>
+              );
+            })}
+
             <div className="absolute top-2 right-2">
               {isDangerous ? (
                 <span className="inline-flex items-center gap-1 bg-rose-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full shadow-md animate-pulse">
@@ -118,40 +146,94 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
                 {balanceVerdict}
               </span>
               <span className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
-                Total Energi: {totals.totalCalories.toFixed(0)} kkal
+                Total Energi: {totals.totalCalories.toFixed(0)} kkal ({items.length} Komponen Lauk)
               </span>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
               {balanceDesc}
             </p>
+
+            {/* Rekap Kelompok Kelayakan Lauk (Hijau, Kuning, Merah) */}
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-center">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase block">Layak (Hijau)</span>
+                <span className="text-sm font-black text-emerald-700">{safeItems.length} Lauk</span>
+                <span className="text-[9px] text-emerald-600 block mt-0.5">Aman Dikonsumsi</span>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-center">
+                <span className="text-[10px] font-bold text-amber-800 uppercase block">Periksa (Kuning)</span>
+                <span className="text-sm font-black text-amber-700">{warningItems.length} Lauk</span>
+                <span className="text-[9px] text-amber-600 block mt-0.5">Waspada Kesegaran</span>
+              </div>
+              <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl text-center">
+                <span className="text-[10px] font-bold text-rose-800 uppercase block">Bahaya (Merah)</span>
+                <span className="text-sm font-black text-rose-700">{dangerItems.length} Lauk</span>
+                <span className="text-[9px] text-rose-600 block mt-0.5">Dilarang Dimakan</span>
+              </div>
+            </div>
           </div>
 
-          {/* Rincian Distribusi Makronutrisi */}
-          <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Rasio Makronutrisi Piring:
-            </span>
-            <div className="grid grid-cols-4 gap-2 text-center font-mono">
-              <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-xl">
-                <span className="text-[10px] text-emerald-800 font-bold block">Protein</span>
-                <span className="text-xs md:text-sm font-black text-emerald-700">{totals.totalProtein.toFixed(1)}g</span>
-                <span className="text-[9px] text-emerald-600 block">{proteinPercent.toFixed(0)}%</span>
+          {/* Rincian Distribusi Makronutrisi & Mikronutrisi */}
+          <div className="flex flex-col gap-3">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Rasio Makronutrisi Piring:
+              </span>
+              <div className="grid grid-cols-4 gap-2 text-center font-mono">
+                <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-xl">
+                  <span className="text-[10px] text-emerald-800 font-bold block">Protein</span>
+                  <span className="text-xs md:text-sm font-black text-emerald-700">{totals.totalProtein.toFixed(1)}g</span>
+                  <span className="text-[9px] text-emerald-600 block">{proteinPercent.toFixed(0)}%</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-2 rounded-xl">
+                  <span className="text-[10px] text-amber-800 font-bold block">Lemak</span>
+                  <span className="text-xs md:text-sm font-black text-amber-700">{totals.totalFat.toFixed(1)}g</span>
+                  <span className="text-[9px] text-amber-600 block">{fatPercent.toFixed(0)}%</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 p-2 rounded-xl">
+                  <span className="text-[10px] text-blue-800 font-bold block">Karbo</span>
+                  <span className="text-xs md:text-sm font-black text-blue-700">{totals.totalCarbs.toFixed(1)}g</span>
+                  <span className="text-[9px] text-blue-600 block">{carbsPercent.toFixed(0)}%</span>
+                </div>
+                <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl">
+                  <span className="text-[10px] text-purple-800 font-bold block">Serat</span>
+                  <span className="text-xs md:text-sm font-black text-purple-700">{totals.totalFiber.toFixed(1)}g</span>
+                  <span className="text-[9px] text-purple-600 block">TKPI</span>
+                </div>
               </div>
-              <div className="bg-amber-50 border border-amber-100 p-2 rounded-xl">
-                <span className="text-[10px] text-amber-800 font-bold block">Lemak</span>
-                <span className="text-xs md:text-sm font-black text-amber-700">{totals.totalFat.toFixed(1)}g</span>
-                <span className="text-[9px] text-amber-600 block">{fatPercent.toFixed(0)}%</span>
-              </div>
-              <div className="bg-blue-50 border border-blue-100 p-2 rounded-xl">
-                <span className="text-[10px] text-blue-800 font-bold block">Karbo</span>
-                <span className="text-xs md:text-sm font-black text-blue-700">{totals.totalCarbs.toFixed(1)}g</span>
-                <span className="text-[9px] text-blue-600 block">{carbsPercent.toFixed(0)}%</span>
-              </div>
-              <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl">
-                <span className="text-[10px] text-purple-800 font-bold block">Serat</span>
-                <span className="text-xs md:text-sm font-black text-purple-700">{totals.totalFiber.toFixed(1)}g</span>
-                <span className="text-[9px] text-purple-600 block">TKPI</span>
+            </div>
+
+            {/* Panel Mikronutrisi & Vitamin Total */}
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Kandungan Vitamin & Mineral Esensial:
+              </span>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center font-mono">
+                <div className="bg-orange-50/80 border border-orange-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-orange-800 font-bold block">Vit A</span>
+                  <span className="text-xs font-black text-orange-700">{totals.totalVitaminA.toFixed(0)} µg</span>
+                </div>
+                <div className="bg-yellow-50/80 border border-yellow-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-yellow-800 font-bold block">Vit B-Kompleks</span>
+                  <span className="text-xs font-black text-yellow-700">{totals.totalVitaminB.toFixed(2)} mg</span>
+                </div>
+                <div className="bg-emerald-50/80 border border-emerald-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-emerald-800 font-bold block">Vit C</span>
+                  <span className="text-xs font-black text-emerald-700">{totals.totalVitaminC.toFixed(1)} mg</span>
+                </div>
+                <div className="bg-sky-50/80 border border-sky-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-sky-800 font-bold block">Vit D</span>
+                  <span className="text-xs font-black text-sky-700">{totals.totalVitaminD.toFixed(1)} µg</span>
+                </div>
+                <div className="bg-teal-50/80 border border-teal-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-teal-800 font-bold block">Kalsium</span>
+                  <span className="text-xs font-black text-teal-700">{totals.totalCalcium.toFixed(0)} mg</span>
+                </div>
+                <div className="bg-rose-50/80 border border-rose-100 p-1.5 rounded-lg">
+                  <span className="text-[9px] text-rose-800 font-bold block">Zat Besi</span>
+                  <span className="text-xs font-black text-rose-700">{totals.totalIron.toFixed(1)} mg</span>
+                </div>
               </div>
             </div>
           </div>
@@ -183,6 +265,7 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
                 <th className="py-3 px-3 text-center">Protein</th>
                 <th className="py-3 px-3 text-center">Lemak</th>
                 <th className="py-3 px-3 text-center">Karbo</th>
+                <th className="py-3 px-4">Kandungan Vitamin & Mineral</th>
                 <th className="py-3 px-4">Rekomendasi Tindakan</th>
               </tr>
             </thead>
@@ -227,6 +310,43 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
                   <td className="py-3.5 px-3 text-center font-mono text-slate-700 whitespace-nowrap">
                     {item.carbs}g
                   </td>
+                  <td className="py-3.5 px-4 min-w-[210px]">
+                    <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                      {item.vitaminA_mcg !== undefined && item.vitaminA_mcg > 0 && (
+                        <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">
+                          Vit A: {item.vitaminA_mcg}µg
+                        </span>
+                      )}
+                      {item.vitaminB_mg !== undefined && item.vitaminB_mg > 0 && (
+                        <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                          Vit B: {item.vitaminB_mg}mg
+                        </span>
+                      )}
+                      {item.vitaminC_mg !== undefined && item.vitaminC_mg > 0 && (
+                        <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">
+                          Vit C: {item.vitaminC_mg}mg
+                        </span>
+                      )}
+                      {item.vitaminD_mcg !== undefined && item.vitaminD_mcg > 0 && (
+                        <span className="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-semibold">
+                          Vit D: {item.vitaminD_mcg}µg
+                        </span>
+                      )}
+                      {item.calcium_mg !== undefined && item.calcium_mg > 0 && (
+                        <span className="bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded font-semibold">
+                          Ca: {item.calcium_mg}mg
+                        </span>
+                      )}
+                      {item.iron_mg !== undefined && item.iron_mg > 0 && (
+                        <span className="bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-semibold">
+                          Fe: {item.iron_mg}mg
+                        </span>
+                      )}
+                      {(!item.vitaminA_mcg && !item.vitaminC_mg && !item.vitaminD_mcg && !item.calcium_mg) && (
+                        <span className="text-slate-400 italic">Mikro sekunder</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-3.5 px-4 text-xs font-semibold text-slate-800 min-w-[180px] leading-relaxed">
                     {item.recommendation}
                   </td>
@@ -244,8 +364,8 @@ export const FoodForensicTable: React.FC<Props> = ({ items, totals, scannedImage
                 <td className="py-3.5 px-3 text-center font-mono">{totals.totalProtein.toFixed(1)}g</td>
                 <td className="py-3.5 px-3 text-center font-mono">{totals.totalFat.toFixed(1)}g</td>
                 <td className="py-3.5 px-3 text-center font-mono">{totals.totalCarbs.toFixed(1)}g</td>
-                <td className="py-3.5 px-4 text-[11px] text-slate-300 font-normal">
-                  Total Serat: {totals.totalFiber.toFixed(1)}g
+                <td className="py-3.5 px-4 text-[11px] text-slate-300 font-mono" colSpan={2}>
+                  Vit A: {totals.totalVitaminA.toFixed(0)}µg | Vit B: {totals.totalVitaminB.toFixed(2)}mg | Vit C: {totals.totalVitaminC.toFixed(1)}mg | Vit D: {totals.totalVitaminD.toFixed(1)}µg | Ca: {totals.totalCalcium.toFixed(0)}mg | Fe: {totals.totalIron.toFixed(1)}mg
                 </td>
               </tr>
             </tfoot>

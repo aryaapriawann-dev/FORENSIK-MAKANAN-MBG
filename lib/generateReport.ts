@@ -70,12 +70,16 @@ export function generateForensicReport(
   doc.text('Ringkasan Keamanan Pangan', margin, y);
   y += 8;
 
+  const safeCount = items.filter((i) => i.safetyStatus === 'safe').length;
+  const warningCount = items.filter((i) => i.safetyStatus === 'warning').length;
+  const dangerCount = items.filter((i) => i.safetyStatus === 'danger').length;
+
   const overallLabel =
-    totals.overallSafety === 'danger'
-      ? 'BAHAYA — jangan dikonsumsi'
-      : totals.overallSafety === 'warning'
-      ? 'PERHATIAN — periksa sebelum makan'
-      : 'AMAN — layak dikonsumsi';
+    dangerCount > 0
+      ? `BAHAYA — ${dangerCount} lauk tidak layak / terkontaminasi mikroba`
+      : warningCount > 0
+      ? `PERHATIAN — ${warningCount} lauk perlu diperiksa sebelum disantap`
+      : `AMAN — Semua ${safeCount} lauk layak & sehat untuk dikonsumsi`;
   const overallColor =
     STATUS_COLOR[
       totals.overallSafety as FoodItemAnalysis['safetyStatus']
@@ -173,7 +177,7 @@ export function generateForensicReport(
       1
     )}g | Lemak ${totals.totalFat.toFixed(1)}g | Karbo ${totals.totalCarbs.toFixed(
       1
-    )}g | Serat ${totals.totalFiber.toFixed(1)}g`,
+    )}g | Serat ${totals.totalFiber.toFixed(1)}g | Vit A ${totals.totalVitaminA.toFixed(0)}ug | Vit C ${totals.totalVitaminC.toFixed(1)}mg`,
     margin + 12,
     y + 19
   );

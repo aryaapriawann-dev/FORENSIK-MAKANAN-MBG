@@ -23,6 +23,12 @@ export default function NutriSafeApp() {
       acc.totalFat += curr.fat;
       acc.totalCarbs += curr.carbs;
       acc.totalFiber += curr.fiber;
+      acc.totalVitaminA += curr.vitaminA_mcg || 0;
+      acc.totalVitaminB += curr.vitaminB_mg || 0;
+      acc.totalVitaminC += curr.vitaminC_mg || 0;
+      acc.totalVitaminD += curr.vitaminD_mcg || 0;
+      acc.totalCalcium += curr.calcium_mg || 0;
+      acc.totalIron += curr.iron_mg || 0;
       if (curr.safetyStatus === 'danger') acc.overallSafety = 'danger';
       else if (curr.safetyStatus === 'warning' && acc.overallSafety !== 'danger')
         acc.overallSafety = 'warning';
@@ -34,6 +40,12 @@ export default function NutriSafeApp() {
       totalFat: 0,
       totalCarbs: 0,
       totalFiber: 0,
+      totalVitaminA: 0,
+      totalVitaminB: 0,
+      totalVitaminC: 0,
+      totalVitaminD: 0,
+      totalCalcium: 0,
+      totalIron: 0,
       overallSafety: 'safe',
     } as NutritionTotal
   );
