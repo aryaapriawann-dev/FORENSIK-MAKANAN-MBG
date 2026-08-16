@@ -430,7 +430,6 @@ export function analyzeRegionPixels(
     // 7. DETEKSI KAPANG JAMUR NYATA (Hanya jika tumbuh di atas permukaan roti/nasi basi)
     // Kapang Penicillium (bercak keabuan tosca gelap pudar pada roti gandum kering)
     const isRealGreenMold =
-      breadWheatCount > 0 &&
       sat > 0.1 &&
       g > r + 15 &&
       g > b - 5 &&
@@ -440,7 +439,7 @@ export function analyzeRegionPixels(
 
     // Kapang Hitam / Rhizopus stolonifer pada roti
     const isRealBlackMold =
-      breadWheatCount > 0 && brightness < 30 && max < 38 && sat < 0.25;
+      brightness < 30 && max < 38 && sat < 0.25;
 
     if (isRealGreenMold) {
       greenMoldCount++;
