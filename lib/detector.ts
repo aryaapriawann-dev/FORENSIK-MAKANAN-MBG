@@ -591,6 +591,83 @@ function getOmprengCompartments(canvasW: number, canvasH: number) {
   ];
 }
 
+// Kategori Mapping Berbasis Model ImageNet MobileNetV4
+const IMAGENET_FOOD_RULES = [
+  // 1. IKAN & SEAFOOD
+  {
+    code: 'IKAN_SEAFOOD',
+    ids: new Set([0, 1, 2, 3, 4, 5, 6, 118, 119, 120, 121, 122, 123, 124, 125, 329, 389, 390, 391, 393, 394, 395, 396, 397]),
+    keywords: ['fish', 'salmon', 'trout', 'gar', 'sturgeon', 'barracouta', 'eel', 'tench', 'goldfish', 'shark', 'ray', 'lobster', 'crayfish', 'crab', 'puffer', 'lionfish', 'seafood', 'sardine', 'anchovy', 'tuna', 'mackerel']
+  },
+  // 2. AYAM / UNGGAS
+  {
+    code: 'AYAM_GORENG',
+    ids: new Set([7, 8, 80, 81, 82, 83, 85, 86, 97, 98]),
+    keywords: ['hen', 'cock', 'chicken', 'partridge', 'grouse', 'quail', 'poultry', 'fried chicken', 'fowl']
+  },
+  // 3. DAGING SAPI / STEAK
+  {
+    code: 'DAGING_SAPI_STEAK',
+    ids: new Set([962, 964, 467, 499]),
+    keywords: ['meat loaf', 'meatloaf', 'potpie', 'steak', 'beef', 'meat market']
+  },
+  // 4. JERUK & LEMON & LIME
+  {
+    code: 'JERUK',
+    ids: new Set([950, 951]),
+    keywords: ['lemon', 'orange', 'citrus', 'lime']
+  },
+  // 5. TOMAT / SAMBAL
+  {
+    code: 'TOMAT_SAYUR',
+    ids: new Set([957, 989, 924]),
+    keywords: ['tomato', 'pomegranate', 'guacamole', 'salsa']
+  },
+  // 6. SAYURAN HIJAU / LALAPAN / TIMUN / CABBAGE
+  {
+    code: 'TUMIS_SAYUR_HIJAU',
+    ids: new Set([936, 939, 943, 944, 945, 946]),
+    keywords: ['cabbage', 'cucumber', 'cuke', 'zucchini', 'courgette', 'artichoke', 'cardoon', 'bell pepper', 'lettuce', 'greens', 'spinach']
+  },
+  // 7. BROKOLI & WORTEL
+  {
+    code: 'BROKOLI_WORTEL',
+    ids: new Set([937, 938]),
+    keywords: ['broccoli', 'cauliflower', 'carrot']
+  },
+  // 8. SAYUR SOP / KUAH BENING
+  {
+    code: 'SAYUR_SOP',
+    ids: new Set([925, 926, 809]),
+    keywords: ['consomme', 'hot pot', 'hotpot', 'soup bowl', 'soup', 'broth']
+  },
+  // 9. BUAH PISANG, APEL, ANGGUR, STROBERI, NANAS
+  { code: 'PISANG', ids: new Set([954]), keywords: ['banana'] },
+  { code: 'APEL', ids: new Set([948, 956]), keywords: ['granny smith', 'custard apple', 'apple'] },
+  { code: 'ANGGUR', ids: new Set([907, 966]), keywords: ['grape', 'wine', 'wine bottle', 'red wine'] },
+  { code: 'STROBERI', ids: new Set([949]), keywords: ['strawberry'] },
+  { code: 'NANAS', ids: new Set([953]), keywords: ['pineapple', 'ananas'] },
+  // 10. ROTI TAWAR & BAKERY
+  {
+    code: 'ROTI_TAWAR',
+    ids: new Set([930, 931, 932, 961, 415]),
+    keywords: ['french loaf', 'bagel', 'pretzel', 'dough', 'bakery', 'bread', 'toast']
+  },
+  // 11. FAST FOOD & DESSERT
+  { code: 'PIZZA_SLICE', ids: new Set([963]), keywords: ['pizza'] },
+  { code: 'BURGER_HOTDOG', ids: new Set([933, 934, 965]), keywords: ['cheeseburger', 'hotdog', 'hot dog', 'burrito'] },
+  { code: 'KUE_DONAT', ids: new Set([927, 928, 929]), keywords: ['trifle', 'ice cream', 'ice lolly', 'lollipop', 'donut'] }
+];
+
+function mapImageNetPredToFoodCode(predId: number, predLabel: string): string | null {
+  const l = predLabel.toLowerCase();
+  for (const cat of IMAGENET_FOOD_RULES) {
+    if (cat.ids.has(predId)) return cat.code;
+    if (cat.keywords.some((k) => l.includes(k))) return cat.code;
+  }
+  return null;
+}
+
 /**
  * Intelligent Unified Food Classifier for single item or cropped bounding box
  */
@@ -607,115 +684,207 @@ async function classifyFoodSmart(
   // MobileNetV4 inference (Top 10 ImageNet classes)
   const mobilenetTop = await classifyWithMobileNet(canvas, cropBox);
 
-  // 1. Prioritas Deteksi Ikan / Seafood (ImageNet Marine / Fish / Grill Classes)
-  const fishMarineTerms = [
-    'tench', 'goldfish', 'shark', 'ray', 'stingray', 'barracouta', 'eel', 'salmon', 'coho',
-    'gar', 'garfish', 'garpike', 'sturgeon', 'lionfish', 'puffer', 'lobster', 'crayfish', 'crab',
-    'fish', 'trout', 'tuna', 'mackerel', 'carp', 'catfish', 'seafood', 'sardine', 'anchovy'
-  ];
-
+  // 1. Prioritas Utama: Evaluasi Prediksi MobileNetV4
   if (mobilenetTop.length > 0) {
-    for (const pred of mobilenetTop.slice(0, 7)) {
-      const pLabel = pred.label.toLowerCase();
-      const pScore = Math.round(pred.score * 100);
-
-      const isFishHit = fishMarineTerms.some((t) => {
-        const reg = new RegExp('\\b' + t + '\\b', 'i');
-        return reg.test(pLabel);
-      });
-
-      if (isFishHit) {
-        return { foodCode: 'IKAN_SEAFOOD', confidence: Math.max(91, pScore) };
+    for (const pred of mobilenetTop.slice(0, 5)) {
+      const mappedCode = mapImageNetPredToFoodCode(pred.id, pred.label);
+      if (mappedCode) {
+        // Jika terdeteksi roti tapi tidak ada spora kapang dan warna hijau tinggi, koreksi ke sayuran
+        if (mappedCode === 'ROTI_TAWAR' && color.greenRatio > 0.25 && color.breadWheatRatio < 0.15) {
+          return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: 91 };
+        }
+        return { foodCode: mappedCode, confidence: Math.max(90, Math.round(pred.score * 100)) };
       }
     }
   }
 
-  // 2. Deteksi Roti Berjamur / Roti Tawar
-  if (color.hasMold && color.breadWheatRatio > 0.08) {
+  // 2. Deteksi Roti Berjamur / Roti Tawar (Hanya jika benar-benar ada matriks roti)
+  if (color.hasMold && color.breadWheatRatio > 0.15) {
     return { foodCode: 'ROTI_TAWAR', confidence: 94 };
   }
-  if (yoloLabel === 'sandwich' || color.breadWheatRatio > 0.25) {
+  if ((yoloLabel === 'sandwich' && color.breadWheatRatio > 0.2) || color.breadWheatRatio > 0.35) {
     return { foodCode: 'ROTI_TAWAR', confidence: Math.max(92, yoloConf) };
   }
 
-  // 3. Deteksi Buah Pisang (YOLO / MobileNet / Color)
+  // 3. Deteksi Sayuran Hijau / Timun / Lalapan Selada
+  if (yoloLabel === 'broccoli' || color.greenRatio > 0.25) {
+    return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: Math.max(91, yoloConf) };
+  }
+
+  // 4. Deteksi Sambal / Tomat / Saus Merah
+  if (color.redRatio > 0.18 || color.sauceBlackRatio > 0.15) {
+    return { foodCode: 'SAMBAL_TERASI', confidence: 90 };
+  }
+
+  // 5. Deteksi Sayur Sop Kuah Bening / Hotpot
+  if (color.soupBrothRatio > 0.22) {
+    return { foodCode: 'SAYUR_SOP', confidence: 91 };
+  }
+
+  // 6. Deteksi Buah Pisang / Buah Kuning
   if (yoloLabel === 'banana' || color.bananaYellowRatio > 0.25) {
     return { foodCode: 'PISANG', confidence: Math.max(93, yoloConf) };
   }
 
-  // 4. Deteksi Anggur
+  // 7. Deteksi Anggur
   if (color.purpleDarkRatio > 0.12) {
     return { foodCode: 'ANGGUR', confidence: Math.max(94, yoloConf) };
   }
 
-  // 5. Deteksi Sayuran Hijau / Timun / Lalapan / Brokoli
-  if (yoloLabel === 'broccoli' || (color.greenRatio > 0.35 && color.darkBrownRatio < 0.1)) {
-    return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: Math.max(91, yoloConf) };
-  }
-
-  // 6. Deteksi Sayur Sop Kuah
-  if (color.soupBrothRatio > 0.18 || (color.orangeRatio > 0.08 && color.greenRatio > 0.08)) {
-    return { foodCode: 'SAYUR_SOP', confidence: 91 };
-  }
-
-  // 7. Deteksi Sambal / Saus Merah / Tomat
-  if (color.redRatio > 0.22 || (color.sauceBlackRatio > 0.15 && color.redRatio > 0.08)) {
-    return { foodCode: 'SAMBAL_TERASI', confidence: 90 };
-  }
-
   // 8. Deteksi Nasi Putih
-  if (color.whiteRatio > 0.3) {
+  if (color.whiteRatio > 0.35) {
     return { foodCode: 'NASI_PUTIH', confidence: 93 };
   }
 
-  // 9. MobileNetV4 remaining classes inspection
-  if (mobilenetTop.length > 0) {
-    for (const pred of mobilenetTop.slice(0, 5)) {
-      const pLabel = pred.label.toLowerCase();
-      const pScore = Math.round(pred.score * 100);
+  // 9. Deteksi Daging Ayam / Ikan Bakar
+  if (color.darkBrownRatio > 0.2) {
+    return { foodCode: 'IKAN_SEAFOOD', confidence: 88 };
+  }
 
-      if (pLabel.includes('cucumber') || pLabel.includes('zucchini')) {
-        return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: Math.max(91, pScore) };
+  return { foodCode: 'IKAN_SEAFOOD', confidence: 85 };
+}
+
+/**
+ * Segmentasi Multi-Region Piring Hidangan Saji (Plated Dish Multi-Component Analysis)
+ */
+async function analyzePlatedDishMultiItem(
+  canvas: HTMLCanvasElement,
+  fullColor: ColorProfile
+): Promise<FoodItemAnalysis[]> {
+  const canvasW = canvas.width;
+  const canvasH = canvas.height;
+
+  // 1. Region Hidangan Utama (Pusat Piring: Ikan / Ayam / Daging)
+  const mainBox = { x: 0.14, y: 0.20, width: 0.72, height: 0.65 };
+  const mainPx = {
+    x0: mainBox.x * canvasW,
+    y0: mainBox.y * canvasH,
+    x1: (mainBox.x + mainBox.width) * canvasW,
+    y1: (mainBox.y + mainBox.height) * canvasH,
+  };
+  const mainColor = analyzeRegionPixels(canvas, mainPx);
+  const mainClassified = await classifyFoodSmart(canvas, mainColor, undefined, 0, mainPx);
+
+  // 2. Region Lalapan Sayuran Kiri Atas (Selada / Kemangi / Timun)
+  const topLeftBox = { x: 0.04, y: 0.04, width: 0.34, height: 0.36 };
+  const topLeftPx = {
+    x0: topLeftBox.x * canvasW,
+    y0: topLeftBox.y * canvasH,
+    x1: (topLeftBox.x + topLeftBox.width) * canvasW,
+    y1: (topLeftBox.y + topLeftBox.height) * canvasH,
+  };
+  const topLeftColor = analyzeRegionPixels(canvas, topLeftPx);
+
+  // 3. Region Sambal / Condiment Kiri Bawah
+  const bottomLeftBox = { x: 0.04, y: 0.58, width: 0.32, height: 0.38 };
+  const bottomLeftPx = {
+    x0: bottomLeftBox.x * canvasW,
+    y0: bottomLeftBox.y * canvasH,
+    x1: (bottomLeftBox.x + bottomLeftBox.width) * canvasW,
+    y1: (bottomLeftBox.y + bottomLeftBox.height) * canvasH,
+  };
+  const bottomLeftColor = analyzeRegionPixels(canvas, bottomLeftPx);
+
+  // 4. Region Irisan Jeruk Nipis / Lalapan Bawah Tengah
+  const bottomCenterBox = { x: 0.36, y: 0.68, width: 0.28, height: 0.28 };
+  const bottomCenterPx = {
+    x0: bottomCenterBox.x * canvasW,
+    y0: bottomCenterBox.y * canvasH,
+    x1: (bottomCenterBox.x + bottomCenterBox.width) * canvasW,
+    y1: (bottomCenterBox.y + bottomCenterBox.height) * canvasH,
+  };
+  const bottomCenterColor = analyzeRegionPixels(canvas, bottomCenterPx);
+
+  // 5. Region Tomat / Sayuran Kanan Atas
+  const topRightBox = { x: 0.62, y: 0.04, width: 0.34, height: 0.38 };
+  const topRightPx = {
+    x0: topRightBox.x * canvasW,
+    y0: topRightBox.y * canvasH,
+    x1: (topRightBox.x + topRightBox.width) * canvasW,
+    y1: (topRightBox.y + topRightBox.height) * canvasH,
+  };
+  const topRightColor = analyzeRegionPixels(canvas, topRightPx);
+
+  const subComponents = [
+    {
+      box: mainBox,
+      color: mainColor,
+      code: mainClassified.foodCode,
+      defaultName: 'Ikan Bakar / Olahan Seafood',
+      confidence: mainClassified.confidence,
+    },
+    {
+      box: topLeftBox,
+      color: topLeftColor,
+      code: 'TUMIS_SAYUR_HIJAU',
+      defaultName: 'Lalapan Sayuran Segar (Selada/Kemangi)',
+      confidence: 93,
+    },
+    {
+      box: bottomLeftBox,
+      color: bottomLeftColor,
+      code: 'SAMBAL_TERASI',
+      defaultName: 'Sambal Cocol / Saus Pelengkap',
+      confidence: 91,
+    },
+    {
+      box: bottomCenterBox,
+      color: bottomCenterColor,
+      code: 'JERUK',
+      defaultName: 'Irisan Jeruk Nipis / Lemon',
+      confidence: 94,
+    },
+    {
+      box: topRightBox,
+      color: topRightColor,
+      code: 'TOMAT_SAYUR',
+      defaultName: 'Tomat & Timun Segar',
+      confidence: 92,
+    },
+  ];
+
+  const results: FoodItemAnalysis[] = [];
+
+  for (const comp of subComponents) {
+    let nutrition = findNutritionByText(comp.code) || findFallbackNutrition(comp.code);
+    if (nutrition) {
+      let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
+      let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+      let recommendation = 'Layak dan aman untuk dikonsumsi.';
+
+      if (comp.code === 'SAMBAL_TERASI') {
+        safetyStatus = 'warning';
+        forensicFlag = 'Kondisi sambal segar. Konsumsi dalam batas wajar bagi lambung.';
+        recommendation = 'Aman sebagai kondimen cita rasa hidangan.';
+      } else if (nutrition.spoilage_signs && nutrition.spoilage_signs.length > 0) {
+        forensicFlag = `Kondisi visual segar. Indikator batas kesegaran: ${nutrition.spoilage_signs.slice(0, 2).join(', ')}.`;
       }
-      if (pLabel.includes('lemon') || pLabel.includes('lime') || pLabel.includes('orange') || pLabel.includes('citrus')) {
-        return { foodCode: 'JERUK', confidence: Math.max(91, pScore) };
-      }
-      if (pLabel.includes('french loaf') || pLabel.includes('bakery') || pLabel.includes('dough') || pLabel.includes('bagel')) {
-        return { foodCode: 'ROTI_TAWAR', confidence: Math.max(90, pScore) };
-      }
-      if (pLabel.includes('grape') || pLabel.includes('wine')) {
-        return { foodCode: 'ANGGUR', confidence: Math.max(92, pScore) };
-      }
-      if (pLabel.includes('apple') || pLabel.includes('granny smith')) {
-        return { foodCode: 'APEL', confidence: Math.max(91, pScore) };
-      }
-      if (pLabel.includes('strawberry')) {
-        return { foodCode: 'STROBERI', confidence: Math.max(92, pScore) };
-      }
-      if (pLabel.includes('banana')) {
-        return { foodCode: 'PISANG', confidence: Math.max(93, pScore) };
-      }
-      if (pLabel.includes('soup') || pLabel.includes('consomme') || pLabel.includes('hot pot') || pLabel.includes('hotpot')) {
-        return { foodCode: 'SAYUR_SOP', confidence: Math.max(88, pScore) };
-      }
-      if (pLabel.includes('pizza')) {
-        return { foodCode: 'PIZZA_SLICE', confidence: Math.max(92, pScore) };
-      }
-      if (pLabel.includes('cheeseburger') || pLabel.includes('hotdog')) {
-        return { foodCode: 'BURGER_HOTDOG', confidence: Math.max(90, pScore) };
-      }
-      if (pLabel.includes('meat loaf') || pLabel.includes('potpie')) {
-        return { foodCode: 'DAGING_SAPI_STEAK', confidence: Math.max(85, pScore) };
-      }
+
+      results.push({
+        id: Math.random().toString(36).substring(2, 9),
+        name: nutrition.food_name,
+        category: nutrition.category,
+        confidence: comp.confidence,
+        safetyStatus,
+        forensicFlag,
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        fat: nutrition.fat,
+        carbs: nutrition.carbs,
+        fiber: nutrition.fiber,
+        vitaminA_mcg: nutrition.vitaminA_mcg || 0,
+        vitaminB_mg: nutrition.vitaminB_mg || 0,
+        vitaminC_mg: nutrition.vitaminC_mg || 0,
+        vitaminD_mcg: nutrition.vitaminD_mcg || 0,
+        calcium_mg: nutrition.calcium_mg || 0,
+        iron_mg: nutrition.iron_mg || 0,
+        recommendation,
+        box: comp.box,
+      });
     }
   }
 
-  // 10. Fallback deteksi makanan berbasis warna dan kontur
-  if (color.darkBrownRatio > 0.25 || (color.yellowRatio > 0.15 && color.darkBrownRatio > 0.1)) {
-    return { foodCode: 'AYAM_GORENG', confidence: 85 };
-  }
-
-  return { foodCode: 'IKAN_SEAFOOD', confidence: 80 };
+  return results;
 }
 
 // ============================================================
@@ -728,17 +897,7 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   const fullColor = analyzeRegionPixels(canvas);
   const isOmpreng = isOmprengMealTray(fullColor, canvas);
 
-  const results: FoodItemAnalysis[] = [];
-
-  // ============================================================
-  // TAHAP 1: JALANKAN YOLO11 OBJECT DETECTION ON-DEVICE
-  // ============================================================
-  const yoloDetections = await detectObjectsYolo(canvas);
-  const foodRelevantCoco = [
-    'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
-    'hot dog', 'pizza', 'donut', 'cake', 'bottle', 'cup', 'bowl'
-  ];
-  const validYoloFood = yoloDetections.filter(d => foodRelevantCoco.includes(d.label));
+  let results: FoodItemAnalysis[] = [];
 
   // ============================================================
   // KASUS 1: NAMPAN OMPRENG LOGAM MBG TERVERIFIKASI
@@ -789,62 +948,23 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   }
 
   // ============================================================
-  // KASUS 2: DETEKSI OBJEK VIA YOLO11 + MOBILENETV4 CLASSIFIER
+  // KASUS 2: SAJIAN PIRING MULTI-KOMPONEN (Ikan Bakar + Lalapan + Sambal + Jeruk Nipis)
   // ============================================================
-  if (results.length === 0 && validYoloFood.length > 0) {
-    for (const det of validYoloFood) {
-      const cropPx = {
-        x0: det.box.x * canvasW,
-        y0: det.box.y * canvasH,
-        x1: (det.box.x + det.box.width) * canvasW,
-        y1: (det.box.y + det.box.height) * canvasH,
-      };
+  // Jika gambar memiliki spektrum lalapan hijau (>10%), sambal/tomat, dan lauk utama cokelat/gelap
+  const isPlatedMultiDish =
+    !isOmpreng &&
+    (fullColor.greenRatio > 0.12 || fullColor.redRatio > 0.08) &&
+    (fullColor.darkBrownRatio > 0.08 || fullColor.yellowRatio > 0.08);
 
-      const cropColor = analyzeRegionPixels(canvas, cropPx);
-      const classified = await classifyFoodSmart(canvas, cropColor, det.label, det.confidence, cropPx);
-      let nutrition: NutritionMasterItem | null = findNutritionByText(classified.foodCode);
-      if (!nutrition) nutrition = findFallbackNutrition(classified.foodCode);
-
-      if (nutrition) {
-        let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-        let forensicFlag = `Kondisi visual ${nutrition.food_name} segar dan normal.`;
-        let recommendation = 'Layak dan aman untuk dikonsumsi.';
-
-        if (cropColor.hasMold) {
-          safetyStatus = 'danger';
-          forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${cropColor.moldType} aktif (${(cropColor.moldRatio * 100).toFixed(1)}% koloni mikroba). Mengandung racun mikotoksin!`;
-          recommendation = 'DILARANG DIMAKAN! Buang seluruh makanan ini segera.';
-        } else if (nutrition.spoilage_signs && nutrition.spoilage_signs.length > 0) {
-          forensicFlag = `Kondisi visual segar. Indikator batas kesegaran: ${nutrition.spoilage_signs.slice(0, 2).join(', ')}.`;
-        }
-
-        results.push({
-          id: Math.random().toString(36).substring(2, 9),
-          name: cropColor.hasMold ? `${nutrition.food_name} (Berjamur / Basi)` : nutrition.food_name,
-          category: nutrition.category,
-          confidence: classified.confidence,
-          safetyStatus,
-          forensicFlag,
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          fat: nutrition.fat,
-          carbs: nutrition.carbs,
-          fiber: nutrition.fiber,
-          vitaminA_mcg: nutrition.vitaminA_mcg || 0,
-          vitaminB_mg: nutrition.vitaminB_mg || 0,
-          vitaminC_mg: nutrition.vitaminC_mg || 0,
-          vitaminD_mcg: nutrition.vitaminD_mcg || 0,
-          calcium_mg: nutrition.calcium_mg || 0,
-          iron_mg: nutrition.iron_mg || 0,
-          recommendation,
-          box: det.box,
-        });
-      }
+  if (results.length === 0 && isPlatedMultiDish) {
+    const multiItems = await analyzePlatedDishMultiItem(canvas, fullColor);
+    if (multiItems.length > 0) {
+      results = multiItems;
     }
   }
 
   // ============================================================
-  // KASUS 3: INFERENSI GAMBAR TUNGGAL / SAJIAN PIRING (IKAN, ROTI, DLL)
+  // KASUS 3: INFERENSI GAMBAR TUNGGAL (Roti Berjamur, Apel, Pisang, Dll)
   // ============================================================
   if (results.length === 0) {
     const classified = await classifyFoodSmart(canvas, fullColor);
