@@ -875,9 +875,17 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
 
   let results: FoodItemAnalysis[] = [];
 
+  const globalClassified = await classifyFoodSmart(canvas, fullColor);
   const isPureBreadOrFruit =
-    (fullColor.hasMold && fullColor.breadWheatRatio > 0.15) ||
-    fullColor.breadWheatRatio > 0.45 ||
+    fullColor.hasMold ||
+    globalClassified.foodCode === 'ROTI_TAWAR' ||
+    globalClassified.foodCode === 'PISANG' ||
+    globalClassified.foodCode === 'APEL' ||
+    globalClassified.foodCode === 'ANGGUR' ||
+    globalClassified.foodCode === 'JERUK' ||
+    globalClassified.foodCode === 'STROBERI' ||
+    globalClassified.foodCode === 'NANAS' ||
+    fullColor.breadWheatRatio > 0.3 ||
     fullColor.purpleDarkRatio > 0.35 ||
     fullColor.bananaYellowRatio > 0.45;
 
@@ -886,8 +894,7 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   }
 
   if (results.length === 0) {
-    const classified = await classifyFoodSmart(canvas, fullColor);
-    const fallbackCode = classified.foodCode || 'ROTI_TAWAR';
+    const fallbackCode = globalClassified.foodCode || 'ROTI_TAWAR';
     let nutrition: NutritionMasterItem | null = findNutritionByText(fallbackCode);
     if (!nutrition) nutrition = findFallbackNutrition(fallbackCode) || findFallbackNutrition('ROTI_TAWAR')!;
 
@@ -907,7 +914,7 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
       id: Math.random().toString(36).substring(2, 9),
       name: fullColor.hasMold ? `${nutrition.food_name} (Berjamur / Basi)` : nutrition.food_name,
       category: nutrition.category,
-      confidence: classified.confidence,
+      confidence: globalClassified.confidence,
       safetyStatus,
       forensicFlag,
       calories: nutrition.calories,
