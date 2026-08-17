@@ -7,7 +7,7 @@ from ultralytics.utils import YAML
 REQUIRED_CLASSES = {
     "ikan_bakar",
     "ikan_goreng",
-    "ayam_goreng",
+    "ayam_goreng", 
     "tempe",
     "tahu",
     "telur",

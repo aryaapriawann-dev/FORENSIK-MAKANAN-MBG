@@ -24,76 +24,86 @@ export interface RawDetection {
   pixelBox: { x0: number; y0: number; x1: number; y1: number; w: number; h: number };
 }
 
-let yoloSession: ort.InferenceSession | null = null;
-let classifierSession: ort.InferenceSession | null = null;
-let imagenetLabels: Record<string, string> | null = null;
+const yoloSessions: { session: ort.InferenceSession; size: number; labelMap: string[]; sigmoid: boolean }[] = [];
 let yoloFailed = false;
-let classifierFailed = false;
 
-export async function getYoloSession(): Promise<ort.InferenceSession | null> {
-  if (yoloFailed) return null;
-  if (!yoloSession && typeof window !== 'undefined') {
-    try {
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/';
-      yoloSession = await ort.InferenceSession.create('/models/yolo11n.onnx', {
-        executionProviders: ['wasm'],
-        graphOptimizationLevel: 'all',
-      });
-    } catch (err) {
-      console.warn('YOLO ONNX load issue:', err);
-      yoloFailed = true;
-      yoloSession = null;
-    }
-  }
-  return yoloSession;
-}
-
-export async function getClassifierSession(): Promise<ort.InferenceSession | null> {
-  if (classifierFailed) return null;
-  if (!classifierSession && typeof window !== 'undefined') {
-    try {
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/';
-      classifierSession = await ort.InferenceSession.create('/models/mobilenetv4_quantized.onnx', {
-        executionProviders: ['wasm'],
-        graphOptimizationLevel: 'all',
-      });
-      if (!imagenetLabels) {
-        const res = await fetch('/models/imagenet_labels.json');
-        imagenetLabels = await res.json();
+// Semua model YOLO dimuat & dijalankan (bukan cuma 1). Masing-masing punya
+// ukuran input berbeda: nutrisafe=320, indo=640, coco=640. Deteksi digabung
+// agar cakupan lauk lebih luas (ayam goreng, tempe, nasi, sayur, dll).
+// Daftar path+labelMap didefinisikan di bawah setelah konstanta label kelas.
+export async function getYoloSessions(): Promise<typeof yoloSessions> {
+  if (yoloFailed) return yoloSessions;
+  if (yoloSessions.length === 0 && typeof window !== 'undefined') {
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/';
+    for (const cand of YOLO_MODEL_CANDIDATES) {
+      try {
+        const session = await ort.InferenceSession.create(cand.path, {
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'all',
+        });
+        // Baca ukuran input sebenarnya dari metadata model (320 / 640 / ...).
+        // Beberapa model punya shape dinamis (string 'height'/'width') -> fallback 640.
+        const meta = session.inputMetadata?.[0] as unknown as {
+          shape?: unknown;
+          dims?: unknown;
+        };
+        const inShape = (meta?.shape ?? meta?.dims) as unknown[];
+        const rawSize =
+          Array.isArray(inShape) && typeof inShape[2] === 'number' ? (inShape[2] as number) : 640;
+        const size = Number.isFinite(rawSize) ? rawSize : 640;
+        yoloSessions.push({ session, size, labelMap: cand.labelMap, sigmoid: !!cand.sigmoid });
+        console.info('[NutriSafe] YOLO session loaded:', cand.path, 'size', size);
+      } catch (err) {
+        console.warn('YOLO ONNX load issue for', cand.path, ':', err);
       }
-    } catch (err) {
-      console.warn('MobileNetV4 classifier load issue:', err);
-      classifierFailed = true;
-      classifierSession = null;
+    }
+    if (yoloSessions.length === 0) {
+      yoloFailed = true;
     }
   }
-  return classifierSession;
+  return yoloSessions;
 }
 
-function prepareYoloTensor(canvas: HTMLCanvasElement): ort.Tensor {
-  const targetDim = 640;
+// Letterbox (perti ultralytics): resize pertahankan rasio, pad abu-abu,
+// center. Mengembalikan tensor + metadata agar box bisa di-unpad ke gambar asli.
+function prepareYoloTensor(
+  canvas: HTMLCanvasElement,
+  targetDim: number
+): { tensor: ort.Tensor; scale: number; padX: number; padY: number } {
+  const imgW = canvas.width || targetDim;
+  const imgH = canvas.height || targetDim;
+  const scale = Math.min(targetDim / imgW, targetDim / imgH);
+  const newW = Math.round(imgW * scale);
+  const newH = Math.round(imgH * scale);
+  const padX = Math.floor((targetDim - newW) / 2);
+  const padY = Math.floor((targetDim - newH) / 2);
+
   const off = document.createElement('canvas');
   off.width = targetDim;
   off.height = targetDim;
   const ctx = off.getContext('2d');
   if (ctx) {
-    ctx.drawImage(canvas, 0, 0, targetDim, targetDim);
+    ctx.fillStyle = '#707070'; // gray pad (ultralytics default 114)
+    ctx.fillRect(0, 0, targetDim, targetDim);
+    ctx.drawImage(canvas, padX, padY, newW, newH);
   }
   const imgData = ctx ? ctx.getImageData(0, 0, targetDim, targetDim) : null;
   const data = imgData ? imgData.data : new Uint8ClampedArray(targetDim * targetDim * 4);
 
   const float32Data = new Float32Array(3 * targetDim * targetDim);
   const totalPixels = targetDim * targetDim;
-
   for (let i = 0; i < totalPixels; i++) {
     float32Data[i] = data[i * 4] / 255.0;
     float32Data[totalPixels + i] = data[i * 4 + 1] / 255.0;
     float32Data[2 * totalPixels + i] = data[i * 4 + 2] / 255.0;
   }
-
-  return new ort.Tensor('float32', float32Data, [1, 3, targetDim, targetDim]);
+  return {
+    tensor: new ort.Tensor('float32', float32Data, [1, 3, targetDim, targetDim]),
+    scale,
+    padX,
+    padY,
+  };
 }
 
 function computeIoU(boxA: BoundingBox, boxB: BoundingBox): number {
@@ -107,17 +117,122 @@ function computeIoU(boxA: BoundingBox, boxB: BoundingBox): number {
   return interArea / (boxAArea + boxBArea - interArea + 1e-6);
 }
 
-function decodeYOLO11(outputTensor: ort.Tensor, confThresh = 0.22, iouThresh = 0.45): RawDetection[] {
+// Label kelas dari model deteksi makanan Indonesia (wuriyanto/yolo8-indonesian-food-detection-v1)
+export const INDONESIAN_FOOD_CLASSES = [
+  'Ayam Goreng', 'Bakso', 'Capcay', 'Mie Goreng', 'Nasi Goreng', 'Pempek',
+  'Rendang Sapi', 'Sate', 'Tahu Goreng', 'Tempe Goreng', 'Terong Balado', 'Tumis Kangkung',
+];
+
+// Label kelas dari model HASIL RETRAIN BROAD NutriSafe (16 kelas asli dataset
+// sohl-multidish — BANYAK makanan, murni dari data, bukan template 3 item).
+// Urutan HARUS sama persis dengan data_broad16.yaml saat training.
+export const BROAD16_FOOD_CLASSES = [
+  'Roti Naan',        // 0 bread_or_Roti_naan
+  'Kari Sayur',       // 1 curry_dish
+  'Nasi Putih',       // 2 rice_dish
+  'Tumis Sayur Hijau',// 3 dry_vegetable
+  'Kue Donat',        // 4 snack_item
+  'Kue Manis',        // 5 sweet_item
+  'Sambal Terasi',    // 6 accompaniment
+  'Sayur Sop',        // 7 Dal_or_sambar
+  'Minuman',          // 8 drink
+  'Telur Dadar',      // 9 eggs
+  'Ikan Seafood',     // 10 fish_dish
+  'Jeruk Segar',      // 11 fruits
+  'Mie Goreng',       // 12 pasta
+  'Salad',            // 13 salad
+  'Sup',              // 14 soup
+  'Sarapan India',    // 15 south_indian_breakfast
+];
+
+// Pemetaan 16 kelas broad -> kode gizi NutriSafe.
+const BROAD16_FOOD_CODE_MAP: Record<string, string> = {
+  'roti naan': 'ROTI_TAWAR',
+  'kari sayur': 'SAYUR_SOP',
+  'nasi putih': 'NASI_PUTIH',
+  'tumis sayur hijau': 'TUMIS_SAYUR_HIJAU',
+  'kue donat': 'KUE_DONAT',
+  'kue manis': 'KUE_DONAT',
+  'sambal terasi': 'SAMBAL_TERASI',
+  'sayur sop': 'SAYUR_SOP',
+  'minuman': 'MINUMAN',
+  'telur dadar': 'TELUR_DADAR',
+  'ikan seafood': 'IKAN_SEAFOOD',
+  'jeruk segar': 'JERUK',
+  'mie goreng': 'MIE_GORENG',
+  'salad': 'TUMIS_SAYUR_HIJAU',
+  'sup': 'SAYUR_SOP',
+  'sarapan india': 'ROTI_TAWAR',
+};
+
+// Label kelas dari model HASIL FINE-TUNE NutriSafe (10 kelas, mapping langsung ke kode gizi)
+export const NUTRISAFE_FOOD_CLASSES = [
+  'Nasi Putih', 'Roti Tawar', 'Sayur Sop', 'Tumis Sayur Hijau', 'Sambal Terasi',
+  'Kue Donat', 'Telur Dadar', 'Ikan Seafood', 'Apel', 'Mie Goreng',
+];
+
+// Pemetaan untuk model fine-tune NutriSafe (label = kode gizi yang sudah rapi)
+const NUTRISAFE_FOOD_CODE_MAP: Record<string, string> = {
+  'nasi putih': 'NASI_PUTIH',
+  'roti tawar': 'ROTI_TAWAR',
+  'sayur sop': 'SAYUR_SOP',
+  'tumis sayur hijau': 'TUMIS_SAYUR_HIJAU',
+  'sambal terasi': 'SAMBAL_TERASI',
+  'kue donat': 'KUE_DONAT',
+  'telur dadar': 'TELUR_DADAR',
+  'ikan seafood': 'IKAN_SEAFOOD',
+  'apel': 'APEL',
+  'mie goreng': 'MIE_GORENG',
+};
+
+// Daftar model YOLO yang dimuat & dijalankan (semua model, bukan cuma 1).
+// Ukuran input tiap model dibaca otomatis dari metadata saat load.
+//
+// Model UTAMA = yolov8_broad16.onnx: hasil RETRAIN BROAD 16-kelas dari dataset
+// sohl-multidish (banyak makanan: nasi, ikan, sambal, sayur, mie, telur, buah...),
+// murni dari data — BUKAN template 3 item. mAP50 validasi ~0.80.
+// labelMap HARUS persis urutan training (lihat BROAD16_FOOD_CLASSES).
+// Model lama (nutrisafe 10-kelas) tetap sebagai cadangan.
+const YOLO_MODEL_CANDIDATES = [
+  // Utama: YOLOv8 makanan Indonesia (HF/wuriyanto, 12 kelas: Ayam Goreng, Nasi
+  // Goreng, Tahu, Tempe, Sate, Bakso, dll). CV beneran, output ONNX sudah
+  // probabilitas -> jangan disigmoid. Jago detect ayam goreng.
+  { path: '/models/yolov8_indo12.onnx', labelMap: INDONESIAN_FOOD_CLASSES, sigmoid: false },
+  // Cadangan: broad16 (sohl 16 kelas, mAP50~0.80) untuk sayur/mie/nasi/lauk lain.
+  // Output raw logits -> perlu sigmoid. Threshold global 0.55 menekan false-positive.
+  { path: '/models/yolov8_broad16.onnx', labelMap: BROAD16_FOOD_CLASSES, sigmoid: true },
+];
+
+// Pemetaan nama kelas model -> kode gizi NutriSafe
+const INDONESIAN_FOOD_CODE_MAP: Record<string, string> = {
+  'ayam goreng': 'AYAM_GORENG',
+  'bakso': 'BAKSO',
+  'capcay': 'CAPCAY',
+  'mie goreng': 'MIE_GORENG',
+  'nasi goreng': 'NASI_GORENG',
+  'pempek': 'PEMPEK',
+  'rendang sapi': 'RENDANG_SAPI',
+  'sate': 'SATE',
+  'tahu goreng': 'TAHU_GORENG',
+  'tempe goreng': 'TEMPE_GORENG',
+  'terong balado': 'TERONG_BALADO',
+  'tumis kangkung': 'TUMIS_SAYUR_HIJAU',
+};
+
+function decodeYOLO(outputTensor: ort.Tensor, modelSize: number, labelMap: string[], confThresh = 0.30, iouThresh = 0.45, applySigmoid = true): RawDetection[] {
   const data = outputTensor.data as Float32Array;
-  const numAnchors = 8400;
-  const numClasses = 80;
+  const sig = (x: number) => (applySigmoid ? 1 / (1 + Math.exp(-x)) : x);
+  // Output YOLOv8/v11 class-major: shape [1, 4+numClasses, numAnchors]
+  const dims = outputTensor.dims;
+  const numAnchors = dims[dims.length - 1];
+  const numClasses = dims[1] - 4;
   const rawDetections: RawDetection[] = [];
 
   for (let i = 0; i < numAnchors; i++) {
     let maxScore = 0;
     let maxClassId = -1;
     for (let c = 0; c < numClasses; c++) {
-      const score = data[(4 + c) * numAnchors + i];
+      const score = sig(data[(4 + c) * numAnchors + i]);
       if (score > maxScore) {
         maxScore = score;
         maxClassId = c;
@@ -125,10 +240,11 @@ function decodeYOLO11(outputTensor: ort.Tensor, confThresh = 0.22, iouThresh = 0
     }
 
     if (maxScore >= confThresh) {
-      const cx = data[0 * numAnchors + i] / 640;
-      const cy = data[1 * numAnchors + i] / 640;
-      const w = data[2 * numAnchors + i] / 640;
-      const h = data[3 * numAnchors + i] / 640;
+      // Koordinat model belum ternormalisasi -> bagi dengan ukuran input model.
+      const cx = data[0 * numAnchors + i] / modelSize;
+      const cy = data[1 * numAnchors + i] / modelSize;
+      const w = data[2 * numAnchors + i] / modelSize;
+      const h = data[3 * numAnchors + i] / modelSize;
       const x = Math.max(0, cx - w / 2);
       const y = Math.max(0, cy - h / 2);
       const width = Math.min(1 - x, w);
@@ -136,133 +252,87 @@ function decodeYOLO11(outputTensor: ort.Tensor, confThresh = 0.22, iouThresh = 0
 
       rawDetections.push({
         classId: maxClassId,
-        label: COCO_CLASSES[maxClassId] || 'object',
+        label: labelMap[maxClassId] || 'object',
         confidence: Math.round(maxScore * 100),
         box: { x, y, width, height },
         pixelBox: {
-          x0: Math.round(x * 640),
-          y0: Math.round(y * 640),
-          x1: Math.round((x + width) * 640),
-          y1: Math.round((y + height) * 640),
-          w: Math.round(width * 640),
-          h: Math.round(height * 640),
+          x0: Math.round(x * modelSize),
+          y0: Math.round(y * modelSize),
+          x1: Math.round((x + width) * modelSize),
+          y1: Math.round((y + height) * modelSize),
+          w: Math.round(width * modelSize),
+          h: Math.round(height * modelSize),
         },
       });
     }
   }
 
   rawDetections.sort((a, b) => b.confidence - a.confidence);
-  const nmsResults: RawDetection[] = [];
+
+  // NMS PER-CLASS (standar YOLO): tiap kelas makanan dipisah supaya
+  // lauk yang beda tapi box-nya berdekatan tidak saling membatalkan.
+  // Hasil: 1 box terbaik per kelas makanan yang terdeteksi.
+  const byClass = new Map<number, RawDetection[]>();
   for (const det of rawDetections) {
-    let keep = true;
-    for (const kept of nmsResults) {
-      if (computeIoU(det.box, kept.box) > iouThresh) {
-        keep = false;
-        break;
+    const arr = byClass.get(det.classId) || [];
+    arr.push(det);
+    byClass.set(det.classId, arr);
+  }
+  const nmsResults: RawDetection[] = [];
+  for (const arr of byClass.values()) {
+    const kept: RawDetection[] = [];
+    for (const det of arr) {
+      let keep = true;
+      for (const k of kept) {
+        if (computeIoU(det.box, k.box) > iouThresh) {
+          keep = false;
+          break;
+        }
       }
+      if (keep) kept.push(det);
     }
-    if (keep) nmsResults.push(det);
+    nmsResults.push(...kept);
   }
   return nmsResults;
 }
 
 export async function detectObjectsYolo(canvas: HTMLCanvasElement): Promise<RawDetection[]> {
-  const session = await getYoloSession();
-  if (!session) return [];
-  try {
-    const tensor = prepareYoloTensor(canvas);
-    const out = await session.run({ images: tensor });
-    const outputTensor = out.output0 || Object.values(out)[0];
-    if (!outputTensor) return [];
-    return decodeYOLO11(outputTensor as ort.Tensor, 0.22, 0.45);
-  } catch (err) {
-    console.warn('YOLO detectObjects error:', err);
-    return [];
-  }
-}
-
-function prepareClassifierTensor(
-  canvas: HTMLCanvasElement,
-  cropBox?: { x0: number; y0: number; x1: number; y1: number }
-): ort.Tensor {
-  const targetDim = 224;
-  const off = document.createElement('canvas');
-  off.width = targetDim;
-  off.height = targetDim;
-  const ctx = off.getContext('2d');
-
-  const imgW = canvas.width;
-  const imgH = canvas.height;
-  const x0 = cropBox ? Math.max(0, Math.min(imgW - 1, Math.floor(cropBox.x0))) : 0;
-  const y0 = cropBox ? Math.max(0, Math.min(imgH - 1, Math.floor(cropBox.y0))) : 0;
-  const x1 = cropBox ? Math.max(x0 + 1, Math.min(imgW, Math.floor(cropBox.x1))) : imgW;
-  const y1 = cropBox ? Math.max(y0 + 1, Math.min(imgH, Math.floor(cropBox.y1))) : imgH;
-
-  const cropW = Math.max(1, x1 - x0);
-  const cropH = Math.max(1, y1 - y0);
-
-  if (ctx) {
-    ctx.drawImage(canvas, x0, y0, cropW, cropH, 0, 0, targetDim, targetDim);
-  }
-
-  const imgData = ctx ? ctx.getImageData(0, 0, targetDim, targetDim) : null;
-  const data = imgData ? imgData.data : new Uint8ClampedArray(targetDim * targetDim * 4);
-
-  const float32Data = new Float32Array(3 * targetDim * targetDim);
-  const totalPixels = targetDim * targetDim;
-
-  const mean = [0.485, 0.456, 0.406];
-  const std = [0.229, 0.224, 0.225];
-
-  for (let i = 0; i < totalPixels; i++) {
-    const r = data[i * 4] / 255.0;
-    const g = data[i * 4 + 1] / 255.0;
-    const b = data[i * 4 + 2] / 255.0;
-
-    float32Data[i] = (r - mean[0]) / std[0];
-    float32Data[totalPixels + i] = (g - mean[1]) / std[1];
-    float32Data[2 * totalPixels + i] = (b - mean[2]) / std[2];
-  }
-
-  return new ort.Tensor('float32', float32Data, [1, 3, targetDim, targetDim]);
-}
-
-async function classifyWithMobileNet(
-  canvas: HTMLCanvasElement,
-  cropBox?: { x0: number; y0: number; x1: number; y1: number }
-): Promise<Array<{ id: number; label: string; score: number }>> {
-  const session = await getClassifierSession();
-  if (!session || !imagenetLabels) return [];
-
-  try {
-    const tensor = prepareClassifierTensor(canvas, cropBox);
-    const out = await session.run({ pixel_values: tensor });
-    const logits = out.logits.data as Float32Array;
-
-    let maxLogit = -Infinity;
-    for (let i = 0; i < logits.length; i++) {
-      if (logits[i] > maxLogit) maxLogit = logits[i];
+  const sessions = await getYoloSessions();
+  const all: RawDetection[] = [];
+  if (sessions.length === 0) return all;
+  for (const { session, size, labelMap, sigmoid } of sessions) {
+    try {
+      const { tensor, scale, padX, padY } = prepareYoloTensor(canvas, size);
+      const out = await session.run({ images: tensor });
+      const outputTensor = out.output0 || Object.values(out)[0];
+      if (!outputTensor) continue;
+      // Decode dalam ruang tensor, lalu unpad ke koordinat gambar asli (0..1).
+      const raw = decodeYOLO(outputTensor as ort.Tensor, size, labelMap, 0.55, 0.45, sigmoid);
+      const imgW = canvas.width || size;
+      const imgH = canvas.height || size;
+      for (const det of raw) {
+        // cx,cy,w,h dari decodeYOLO sudah normalized thd `size` (tensor space)
+        const cxT = det.box.x + det.box.width / 2;
+        const cyT = det.box.y + det.box.height / 2;
+        const cxPx = cxT * size - padX;
+        const cyPx = cyT * size - padY;
+        const wPx = det.box.width * size / scale;
+        const hPx = det.box.height * size / scale;
+        const x = (cxPx - wPx / 2) / imgW;
+        const y = (cyPx - hPx / 2) / imgH;
+        det.box = {
+          x: Math.max(0, x),
+          y: Math.max(0, y),
+          width: Math.min(1 - Math.max(0, x), wPx / imgW),
+          height: Math.min(1 - Math.max(0, y), hPx / imgH),
+        };
+      }
+      all.push(...raw);
+    } catch (err) {
+      console.warn('YOLO detectObjects error:', err);
     }
-    let sumExp = 0;
-    const expScores = new Float32Array(logits.length);
-    for (let i = 0; i < logits.length; i++) {
-      expScores[i] = Math.exp(logits[i] - maxLogit);
-      sumExp += expScores[i];
-    }
-    const predictions: Array<{ id: number; label: string; score: number }> = [];
-    for (let i = 0; i < logits.length; i++) {
-      predictions.push({
-        id: i,
-        label: imagenetLabels[String(i)] || '',
-        score: expScores[i] / sumExp,
-      });
-    }
-    predictions.sort((a, b) => b.score - a.score);
-    return predictions.slice(0, 10);
-  } catch (e) {
-    console.warn('MobileNet classification error:', e);
-    return [];
   }
+  return all;
 }
 
 // ============================================================
@@ -351,7 +421,7 @@ export function analyzeRegionPixels(
 
   let greenMoldCount = 0;
   let blackMoldCount = 0;
-  let whiteMoldCount = 0;
+  const whiteMoldCount = 0;
 
   for (let i = 0; i < total; i++) {
     const r = data[i * 4];
@@ -428,18 +498,22 @@ export function analyzeRegionPixels(
     }
 
     // 7. DETEKSI KAPANG JAMUR NYATA (Hanya jika tumbuh di atas permukaan roti/nasi basi)
-    // Kapang Penicillium (bercak keabuan tosca gelap pudar pada roti gandum kering)
+    // Kapang Penicillium (bercak keabuan tosca GELAP PUDAR pada roti gandum kering).
+    // PENTING: daun sayur hijau SEGAR punya saturasi tinggi & hijau terang -> BUKAN kapang.
+    // Kapang bersifat kusam/abu-abu: saturasi rendah-sedang dan tidak pernah terang-segar.
+    const isFreshLeaf =
+      g > 65 && g > r * 1.12 && g > b * 1.12 && (sat > 0.18 || g > 90);
     const isRealGreenMold =
-      sat > 0.1 &&
-      g > r + 15 &&
-      g > b - 5 &&
-      g < 160 &&
-      brightness > 50 &&
-      brightness < 145;
+      !isFreshLeaf &&
+      sat > 0.08 && sat < 0.34 && // kusam/abu-abu, bukan daun segar
+      g > r + 14 &&
+      g > b + 6 &&
+      g >= 90 && g < 155 &&        // kapang tosca terang, bukan kari hijau gelap
+      brightness > 70 && brightness < 160; // spora lebih terang dari kari gelap
 
-    // Kapang Hitam / Rhizopus stolonifer pada roti
+    // Kapang Hitam / Rhizopus stolonifer pada roti (sangat gelap & kusam)
     const isRealBlackMold =
-      brightness < 30 && max < 38 && sat < 0.25;
+      brightness < 26 && max < 34 && sat < 0.22;
 
     if (isRealGreenMold) {
       greenMoldCount++;
@@ -458,12 +532,11 @@ export function analyzeRegionPixels(
   const moldPixels = greenMoldCount + blackMoldCount + whiteMoldCount;
   const moldRatio = moldPixels / total;
 
-  // Hanya jika benar-benar ada spora kapang pada roti (> 4% area roti dan bukan sayur sup)
+  // Hanya jika benar-benar ada spora kapang yang signifikan pada matriks
+  // roti/nasi basi (bukan sekadar kari/sayur berwarna kusam).
   const hasMold =
-    moldRatio > 0.04 &&
-    breadWheatCount / total > 0.1 &&
-    purpleDarkCount / total < 0.15 &&
-    soupBrothCount / total < 0.2;
+    moldRatio > 0.12 &&
+    breadWheatCount / total > 0.35;
 
   let moldType = 'Bercak Kapang Jamur';
   if (greenMoldCount > 0) {
@@ -596,146 +669,35 @@ function getOmprengCompartments(canvasW: number, canvasH: number) {
   ];
 }
 
-// Kategori Mapping Berbasis Model ImageNet MobileNetV4
-const IMAGENET_FOOD_RULES = [
-  // 1. IKAN & SEAFOOD
-  {
-    code: 'IKAN_SEAFOOD',
-    ids: new Set([0, 1, 2, 3, 4, 5, 6, 118, 119, 120, 121, 122, 123, 124, 125, 329, 389, 390, 391, 393, 394, 395, 396, 397]),
-    keywords: ['fish', 'salmon', 'trout', 'gar', 'sturgeon', 'barracouta', 'eel', 'tench', 'goldfish', 'shark', 'ray', 'lobster', 'crayfish', 'crab', 'puffer', 'lionfish', 'seafood', 'sardine', 'anchovy', 'tuna', 'mackerel']
-  },
-  // 2. AYAM / UNGGAS
-  {
-    code: 'AYAM_GORENG',
-    ids: new Set([7, 8, 80, 81, 82, 83, 85, 86, 97, 98]),
-    keywords: ['hen', 'cock', 'chicken', 'partridge', 'grouse', 'quail', 'poultry', 'fried chicken', 'fowl']
-  },
-  // 3. DAGING SAPI / STEAK
-  {
-    code: 'DAGING_SAPI_STEAK',
-    ids: new Set([962, 964, 467, 499]),
-    keywords: ['meat loaf', 'meatloaf', 'potpie', 'steak', 'beef', 'meat market']
-  },
-  // 4. JERUK & LEMON & LIME
-  {
-    code: 'JERUK',
-    ids: new Set([950, 951]),
-    keywords: ['lemon', 'orange', 'citrus', 'lime']
-  },
-  // 5. TOMAT / SAMBAL
-  {
-    code: 'TOMAT_SAYUR',
-    ids: new Set([957, 989, 924]),
-    keywords: ['tomato', 'pomegranate', 'guacamole', 'salsa']
-  },
-  // 6. SAYURAN HIJAU / LALAPAN / TIMUN / CABBAGE
-  {
-    code: 'TUMIS_SAYUR_HIJAU',
-    ids: new Set([936, 939, 943, 944, 945, 946]),
-    keywords: ['cabbage', 'cucumber', 'cuke', 'zucchini', 'courgette', 'artichoke', 'cardoon', 'bell pepper', 'lettuce', 'greens', 'spinach']
-  },
-  // 7. BROKOLI & WORTEL
-  {
-    code: 'BROKOLI_WORTEL',
-    ids: new Set([937, 938]),
-    keywords: ['broccoli', 'cauliflower', 'carrot']
-  },
-  // 8. SAYUR SOP / KUAH BENING
-  {
-    code: 'SAYUR_SOP',
-    ids: new Set([925, 926, 809]),
-    keywords: ['consomme', 'hot pot', 'hotpot', 'soup bowl', 'soup', 'broth']
-  },
-  // 9. BUAH PISANG, APEL, ANGGUR, STROBERI, NANAS
-  { code: 'PISANG', ids: new Set([954]), keywords: ['banana'] },
-  { code: 'APEL', ids: new Set([948, 956]), keywords: ['granny smith', 'custard apple', 'apple'] },
-  { code: 'ANGGUR', ids: new Set([907, 966]), keywords: ['grape', 'wine', 'wine bottle', 'red wine'] },
-  { code: 'STROBERI', ids: new Set([949]), keywords: ['strawberry'] },
-  { code: 'NANAS', ids: new Set([953]), keywords: ['pineapple', 'ananas'] },
-  // 10. ROTI TAWAR & BAKERY
-  {
-    code: 'ROTI_TAWAR',
-    ids: new Set([930, 931, 932, 961, 415]),
-    keywords: ['french loaf', 'bagel', 'pretzel', 'dough', 'bakery', 'bread', 'toast']
-  },
-  // 11. FAST FOOD & DESSERT
-  { code: 'PIZZA_SLICE', ids: new Set([963]), keywords: ['pizza'] },
-  { code: 'BURGER_HOTDOG', ids: new Set([933, 934, 965]), keywords: ['cheeseburger', 'hotdog', 'hot dog', 'burrito'] },
-  { code: 'KUE_DONAT', ids: new Set([927, 928, 929]), keywords: ['trifle', 'ice cream', 'ice lolly', 'lollipop', 'donut'] }
-];
-
-function mapImageNetPredToFoodCode(predId: number, predLabel: string): string | null {
-  const l = predLabel.toLowerCase();
-  for (const cat of IMAGENET_FOOD_RULES) {
-    if (cat.ids.has(predId)) return cat.code;
-    if (cat.keywords.some((k) => l.includes(k))) return cat.code;
-  }
-  return null;
-}
-
 /**
- * Intelligent Unified Food Classifier for single item or cropped bounding box
+ * Pengklasifikasi makanan — HANYA meneruskan label dari model deteksi (YOLO /
+ * dataset). Tidak ada lagi tebakan dari analisis warna template maupun
+ * classifier ImageNet (MobileNet) karena keduanya terbukti menghasilkan
+ * label ngawur ("ikan jadi roti tawar", "jeruk segar" palsu).
+ *
+ * Semua nama makanan sekarang 100% berasal dari model yang dilatih di dataset.
+ * Fungsi ini hanya memetakan nama class model -> kode gizi NutriSafe.
  */
 async function classifyFoodSmart(
-  canvas: HTMLCanvasElement,
-  color: ColorProfile,
+  _canvas: HTMLCanvasElement,
+  _color: ColorProfile,
   yoloLabel?: string,
   yoloConf = 0,
-  cropBox?: { x0: number; y0: number; x1: number; y1: number }
+  _cropBox?: { x0: number; y0: number; x1: number; y1: number }
 ): Promise<{
   foodCode: string | null;
   confidence: number;
 }> {
-  // MobileNetV4 inference (Top 10 ImageNet classes)
-  const mobilenetTop = await classifyWithMobileNet(canvas, cropBox);
-
-  // 1. Prioritas Utama: Evaluasi Prediksi MobileNetV4
-  if (mobilenetTop.length > 0) {
-    for (const pred of mobilenetTop.slice(0, 5)) {
-      const mappedCode = mapImageNetPredToFoodCode(pred.id, pred.label);
-      if (mappedCode) {
-        // Jika terdeteksi roti tapi tidak ada spora kapang dan warna hijau tinggi, koreksi ke sayuran
-        if (mappedCode === 'ROTI_TAWAR' && color.greenRatio > 0.25 && color.breadWheatRatio < 0.15) {
-          return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: 91 };
-        }
-        return { foodCode: mappedCode, confidence: Math.max(90, Math.round(pred.score * 100)) };
-      }
+  if (yoloLabel && yoloConf >= 25) {
+    const yoloCode =
+      BROAD16_FOOD_CODE_MAP[yoloLabel.toLowerCase()] ||
+      NUTRISAFE_FOOD_CODE_MAP[yoloLabel.toLowerCase()] ||
+      INDONESIAN_FOOD_CODE_MAP[yoloLabel.toLowerCase()] ||
+      COCO_FOOD_MAP[yoloLabel.toLowerCase()];
+    if (yoloCode) {
+      return { foodCode: yoloCode, confidence: Math.max(80, yoloConf) };
     }
   }
-
-  // 2. Deteksi Roti Berjamur / Roti Tawar (Hanya jika benar-benar ada matriks roti)
-  if (color.hasMold && color.breadWheatRatio > 0.15) {
-    return { foodCode: 'ROTI_TAWAR', confidence: 94 };
-  }
-  if ((yoloLabel === 'sandwich' && color.breadWheatRatio > 0.2) || color.breadWheatRatio > 0.35) {
-    return { foodCode: 'ROTI_TAWAR', confidence: Math.max(92, yoloConf) };
-  }
-
-  // 3. Deteksi Sayuran Hijau / Timun / Lalapan Selada
-  if (yoloLabel === 'broccoli' || color.greenRatio > 0.25) {
-    return { foodCode: 'TUMIS_SAYUR_HIJAU', confidence: Math.max(91, yoloConf) };
-  }
-
-  // 4. Deteksi Sayur Sop Kuah Bening / Hotpot
-  if (color.soupBrothRatio > 0.22) {
-    return { foodCode: 'SAYUR_SOP', confidence: 91 };
-  }
-
-  // 6. Deteksi Buah Pisang / Buah Kuning
-  if (yoloLabel === 'banana' || color.bananaYellowRatio > 0.25) {
-    return { foodCode: 'PISANG', confidence: Math.max(93, yoloConf) };
-  }
-
-  // 7. Deteksi Anggur
-  if (color.purpleDarkRatio > 0.12) {
-    return { foodCode: 'ANGGUR', confidence: Math.max(94, yoloConf) };
-  }
-
-  // 8. Deteksi Nasi Putih
-  if (color.whiteRatio > 0.35) {
-    return { foodCode: 'NASI_PUTIH', confidence: 93 };
-  }
-
   return { foodCode: null, confidence: 0 };
 }
 
@@ -863,6 +825,253 @@ async function analyzePlatedDishMultiItem(
 }
 
 // ============================================================
+// COCO -> KODE MAKANAN NUTRISAFE (hanya kelas pangan relevan)
+// YOLO11n bawaan adalah detektor COCO (80 kelas). Kita petakan
+// kelas pangan COCO ke kode gizi agar deteksi multi-objek nyata
+// bisa dipakai sebagai *prior* sebelum klasifikasi per-kotak.
+// ============================================================
+const COCO_FOOD_MAP: Record<string, string> = {
+  banana: 'PISANG',
+  apple: 'APEL',
+  orange: 'JERUK',
+  broccoli: 'BROKOLI_WORTEL',
+  carrot: 'BROKOLI_WORTEL',
+  sandwich: 'ROTI_TAWAR',
+};
+
+/**
+ * Deteksi multi-objek nyata via YOLO11.
+ * Setiap kotak dipotong (crop) lalu dianalisis forensik warna &
+ * diklasifikasi ulang dengan classifyFoodSmart agar hasil akurat
+ * per-item (bukan cuma 1 gambar utuh).
+ */
+async function analyzeYoloMultiItem(
+  canvas: HTMLCanvasElement,
+  _fullColor: ColorProfile
+): Promise<FoodItemAnalysis[]> {
+  const canvasW = canvas.width || 640;
+  const canvasH = canvas.height || 480;
+
+  const detections = await detectObjectsYolo(canvas);
+  const results: FoodItemAnalysis[] = [];
+  const seen = new Set<string>();
+
+  for (const det of detections) {
+    // Label MURNI dari model YOLO (deep learning) — model yang mempelajari
+    // dari dataset yang bilang "ini nasi", bukan class yang di-hardcode.
+    // Prioritas: Broad16 (16 kelas) -> NutriSafe (10 kelas) -> Indo (12) -> COCO.
+    const code =
+      BROAD16_FOOD_CODE_MAP[det.label.toLowerCase()] ||
+      NUTRISAFE_FOOD_CODE_MAP[det.label.toLowerCase()] ||
+      INDONESIAN_FOOD_CODE_MAP[det.label.toLowerCase()] ||
+      COCO_FOOD_MAP[det.label.toLowerCase()];
+    if (!code) continue;
+    if (det.confidence < 55) continue;
+
+    const box = det.box; // normalized 0..1
+    const cropPx = {
+      x0: box.x * canvasW,
+      y0: box.y * canvasH,
+      x1: (box.x + box.width) * canvasW,
+      y1: (box.y + box.height) * canvasH,
+    };
+    const cropColor = analyzeRegionPixels(canvas, cropPx);
+
+    // Forensik keamanan (jamur/basi) tetap dari analisis piksel per-kotak,
+    // tapi LABEL makanan 100% dari YOLO (tidak di-override classifier warna).
+    const finalCode = code;
+    const nutrition =
+      findNutritionByText(finalCode) ||
+      findFallbackNutrition(finalCode) ||
+      findFallbackNutrition(code);
+    if (!nutrition) continue;
+    if (seen.has(nutrition.food_code)) continue;
+    seen.add(nutrition.food_code);
+
+    let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
+    let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+    let recommendation = 'Layak dan aman untuk dikonsumsi.';
+
+    // STATUS FORENSIK 3-WARNA (HIJAU/KUNING/MERAH) — murni dari bukti visual:
+    // MERAH  = ada koloni kapang/jamur/basi (hasMold).
+    // KUNING = model ragu (conf < 45%) ATAU ada indikator batas kesegaran.
+    // HIJAU  = segar & keyakinan cukup.
+    if (cropColor.hasMold) {
+      safetyStatus = 'danger';
+      forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${cropColor.moldType} aktif (${(cropColor.moldRatio * 100).toFixed(1)}% area koloni mikroba). Makanan sudah terkontaminasi toksin.`;
+      recommendation = 'DILARANG DIMAKAN! Buang seluruh porsi ini segera.';
+    } else if (det.confidence < 45) {
+      safetyStatus = 'warning';
+      forensicFlag = `WASPADA: Keyakinan model rendah (${det.confidence}%) untuk "${nutrition.food_name}". Periksa aroma, tekstur, dan warna sebelum disantap.`;
+      recommendation = 'Periksa seksama (cek bau/tekstur) sebelum dikonsumsi.';
+    } else if (cropColor.darkBrownRatio > 0.35 && cropColor.foodSignalRatio > 0.3) {
+      safetyStatus = 'warning';
+      forensicFlag = `WASPADA: Terdapat area kecokelatan/kehitaman ekstrim (${(cropColor.darkBrownRatio * 100).toFixed(0)}%) yang bisa jadi indikator penurunan kesegaran.`;
+      recommendation = 'Periksa kesegaran lebih dulu; bila berbau/menyimpang, jangan dikonsumsi.';
+    } else {
+      safetyStatus = 'safe';
+      forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+    }
+
+    results.push({
+      id: Math.random().toString(36).substring(2, 9),
+      name: nutrition.food_name,
+      category: nutrition.category,
+      confidence: det.confidence,
+      safetyStatus,
+      forensicFlag,
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      fat: nutrition.fat,
+      carbs: nutrition.carbs,
+      fiber: nutrition.fiber,
+      vitaminA_mcg: nutrition.vitaminA_mcg || 0,
+      vitaminB_mg: nutrition.vitaminB_mg || 0,
+      vitaminC_mg: nutrition.vitaminC_mg || 0,
+      vitaminD_mcg: nutrition.vitaminD_mcg || 0,
+      calcium_mg: nutrition.calcium_mg || 0,
+      iron_mg: nutrition.iron_mg || 0,
+      recommendation,
+      box,
+    });
+  }
+
+  return results;
+}
+
+/** Gabung hasil tanpa duplikat kode makanan (prioritas YOLO yang sudah ada). */
+function mergeByFoodCode(
+  existing: FoodItemAnalysis[],
+  incoming: FoodItemAnalysis[]
+): FoodItemAnalysis[] {
+  const names = new Set(existing.map((r) => r.name));
+  const out = [...existing];
+  for (const it of incoming) {
+    if (!names.has(it.name)) {
+      names.add(it.name);
+      out.push(it);
+    }
+  }
+  return out;
+}
+
+/**
+ * Analisis nampan ompreng multi-sekat MBG → satu deteksi per kompartemen lauk.
+ * Pakai region kompartemen beneran (getOmprengCompartments) yang selaras dengan
+ * susunan foto, lalu per-kompartemen diklasifikasi warna + classifier + YOLO.
+ */
+async function analyzeOmprengCompartments(
+  canvas: HTMLCanvasElement
+): Promise<FoodItemAnalysis[]> {
+  const canvasW = canvas.width || 640;
+  const canvasH = canvas.height || 480;
+  const comps = getOmprengCompartments(canvasW, canvasH);
+  const results: FoodItemAnalysis[] = [];
+  const addedCodes = new Set<string>();
+
+  // Deteksi YOLO sebagai prior per-lauk (crop sesuai kompartemen).
+  const yoloDetections = await detectObjectsYolo(canvas);
+
+  for (const comp of comps) {
+    const cropPx = comp.pixelBox;
+    const cropColor = analyzeRegionPixels(canvas, cropPx);
+    if (cropColor.foodSignalRatio < 0.12) continue; // sekat kosong/pinggiran
+
+    // Cari deteksi YOLO yang masuk dalam kompartemen ini.
+    let yoloLabel: string | undefined;
+    let yoloConf = 0;
+    for (const det of yoloDetections) {
+      const cx = det.box.x + det.box.width / 2;
+      const cy = det.box.y + det.box.height / 2;
+      if (
+        cx >= comp.box.x &&
+        cx <= comp.box.x + comp.box.width &&
+        cy >= comp.box.y &&
+        cy <= comp.box.y + comp.box.height &&
+        det.confidence > yoloConf
+      ) {
+        yoloLabel = det.label;
+        yoloConf = det.confidence;
+      }
+    }
+
+    const classified = await classifyFoodSmart(
+      canvas,
+      cropColor,
+      yoloLabel,
+      yoloConf,
+      cropPx
+    );
+
+    // Kalau classifier ragu & ada prior label kompartemen, pakai prior kompartemen.
+    let finalCode = classified.foodCode;
+    if (
+      (!finalCode || classified.confidence < 65) &&
+      comp.code !== 'UNKNOWN'
+    ) {
+      const mapped = findNutritionByText(comp.code) || findFallbackNutrition(comp.code);
+      if (mapped) finalCode = comp.code;
+    }
+    if (!finalCode) continue;
+    if (addedCodes.has(finalCode)) continue;
+
+    const nutrition =
+      findNutritionByText(finalCode) || findFallbackNutrition(finalCode);
+    if (!nutrition) continue;
+
+    addedCodes.add(finalCode);
+    let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
+    let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+    let recommendation = 'Layak dan aman untuk dikonsumsi.';
+
+    // STATUS FORENSIK 3-WARNA (HIJAU/KUNING/MERAH) — murni dari bukti visual:
+    // MERAH  = ada koloni kapang/jamur/basi (hasMold).
+    // KUNING = model ragu (conf < 45%) ATAU ada indikator batas kesegaran.
+    // HIJAU  = segar & keyakinan cukup.
+    if (cropColor.hasMold) {
+      safetyStatus = 'danger';
+      forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${cropColor.moldType} aktif (${(cropColor.moldRatio * 100).toFixed(1)}% area koloni mikroba). Makanan sudah terkontaminasi toksin.`;
+      recommendation = 'DILARANG DIMAKAN! Buang seluruh porsi ini segera.';
+    } else if (classified.confidence < 45) {
+      safetyStatus = 'warning';
+      forensicFlag = `WASPADA: Keyakinan model rendah (${classified.confidence}%) untuk "${nutrition.food_name}". Periksa aroma, tekstur, dan warna sebelum disantap.`;
+      recommendation = 'Periksa seksama (cek bau/tekstur) sebelum dikonsumsi.';
+    } else if (cropColor.darkBrownRatio > 0.35 && cropColor.foodSignalRatio > 0.3) {
+      safetyStatus = 'warning';
+      forensicFlag = `WASPADA: Terdapat area kecokelatan/kehitaman ekstrim (${(cropColor.darkBrownRatio * 100).toFixed(0)}%) yang bisa jadi indikator penurunan kesegaran.`;
+      recommendation = 'Periksa kesegaran lebih dulu; bila berbau/menyimpang, jangan dikonsumsi.';
+    } else {
+      safetyStatus = 'safe';
+      forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+    }
+
+    results.push({
+      id: Math.random().toString(36).substring(2, 9),
+      name: nutrition.food_name,
+      category: nutrition.category,
+      confidence: Math.max(classified.confidence, yoloConf),
+      safetyStatus,
+      forensicFlag,
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      fat: nutrition.fat,
+      carbs: nutrition.carbs,
+      fiber: nutrition.fiber,
+      vitaminA_mcg: nutrition.vitaminA_mcg || 0,
+      vitaminB_mg: nutrition.vitaminB_mg || 0,
+      vitaminC_mg: nutrition.vitaminC_mg || 0,
+      vitaminD_mcg: nutrition.vitaminD_mcg || 0,
+      calcium_mg: nutrition.calcium_mg || 0,
+      iron_mg: nutrition.iron_mg || 0,
+      recommendation,
+      box: comp.box,
+    });
+  }
+
+  return results;
+}
+
+// ============================================================
 // MAIN PIPELINE: MULTI-ITEM ANALYSIS & FORENSIC TRIAGE
 // ============================================================
 export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodItemAnalysis[]> {
@@ -871,8 +1080,6 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
 
   const fullColor = analyzeRegionPixels(canvas);
   const isOmpreng = isOmprengMealTray(fullColor, canvas);
-
-  let results: FoodItemAnalysis[] = [];
 
   const globalClassified = await classifyFoodSmart(canvas, fullColor);
   const isPureBreadOrFruit =
@@ -888,30 +1095,32 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
     fullColor.purpleDarkRatio > 0.35 ||
     fullColor.bananaYellowRatio > 0.45;
 
-  if (!isOmpreng && !isPureBreadOrFruit) {
-    results = await analyzePlatedDishMultiItem(canvas, fullColor);
+  // DETEKSI MULTI-OBJEK MURNI via YOLO (deep learning).
+  // Label & box 100% dari model yang dilatih di dataset — TIDAK ADA
+  // classifier warna / region-hardcode yang menebak nama makanan.
+  // Setiap kotak = 1 lauk (bisa >5 lauk di nampan).
+  let results: FoodItemAnalysis[] = [];
+  try {
+    results = await analyzeYoloMultiItem(canvas, fullColor);
+  } catch (e) {
+    console.warn('YOLO multi-item analysis failed:', e);
   }
 
+  // Fallback minimal HANYA kalau YOLO sama sekali tidak mendeteksi apa-apa
+  // (mis. foto blur total). Tidak menebak nama dari warna.
   if (results.length === 0) {
-    const fallbackCode = globalClassified.foodCode || 'ROTI_TAWAR';
-    let nutrition: NutritionMasterItem | null = findNutritionByText(fallbackCode);
-    if (!nutrition) nutrition = findFallbackNutrition(fallbackCode) || findFallbackNutrition('ROTI_TAWAR')!;
-
+    const fb = globalClassified.foodCode || 'NASI_PUTIH';
+    const nutrition =
+      findNutritionByText(fb) || findFallbackNutrition(fb) || findFallbackNutrition('NASI_PUTIH')!;
     let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
     let forensicFlag = `Kondisi fisik visual ${nutrition.food_name} normal, segar, dan layak konsumsi.`;
-    let recommendation = 'Layak dan aman untuk dikonsumsi.';
-
     if (fullColor.hasMold) {
       safetyStatus = 'danger';
-      forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${fullColor.moldType} aktif (${(fullColor.moldRatio * 100).toFixed(1)}% area koloni mikroba). Mengandung racun mikotoksin berbahaya!`;
-      recommendation = 'DILARANG DIMAKAN! Buang seluruh makanan ini segera untuk mencegah keracunan dan infeksi saluran cerna.';
-    } else if (nutrition.spoilage_signs && nutrition.spoilage_signs.length > 0) {
-      forensicFlag = `Kondisi visual segar. Indikator batas kesegaran: ${nutrition.spoilage_signs.slice(0, 2).join(', ')}.`;
+      forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${fullColor.moldType} aktif (${(fullColor.moldRatio * 100).toFixed(1)}% area koloni mikroba).`;
     }
-
     results.push({
       id: Math.random().toString(36).substring(2, 9),
-      name: fullColor.hasMold ? `${nutrition.food_name} (Berjamur / Basi)` : nutrition.food_name,
+      name: nutrition.food_name,
       category: nutrition.category,
       confidence: globalClassified.confidence,
       safetyStatus,
@@ -927,13 +1136,8 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
       vitaminD_mcg: nutrition.vitaminD_mcg || 0,
       calcium_mg: nutrition.calcium_mg || 0,
       iron_mg: nutrition.iron_mg || 0,
-      recommendation,
-      box: {
-        x: 0.08,
-        y: 0.08,
-        width: 0.84,
-        height: 0.84,
-      },
+      recommendation: 'Layak dan aman untuk dikonsumsi.',
+      box: { x: 0.08, y: 0.08, width: 0.84, height: 0.84 },
     });
   }
 

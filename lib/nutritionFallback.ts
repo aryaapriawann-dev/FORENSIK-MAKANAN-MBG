@@ -1072,6 +1072,185 @@ export const COMPREHENSIVE_FOOD_DATASET: ExtendedNutritionItem[] = [
       "Bercak kapang jamur putih/hijau pada bolu/kue",
       "Lendir pada topping buah"
     ]
+  },
+  {
+    "food_code": "BAKSO",
+    "food_name": "Bakso Sapi",
+    "category": "Lauk Hewani",
+    "serving_size_gram": 100,
+    "calories": 78.0,
+    "protein": 8.0,
+    "fat": 4.0,
+    "carbs": 3.0,
+    "fiber": 0.3,
+    "vitaminA_mcg": 2.0,
+    "vitaminB_mg": 0.1,
+    "vitaminC_mg": 0.0,
+    "vitaminD_mcg": 0.1,
+    "calcium_mg": 12.0,
+    "iron_mg": 1.0,
+    "shelf_life_hours": 16,
+    "aliases": [
+      "bakso",
+      "meatball",
+      "bakso sapi",
+      "beef meatball",
+      "pentol"
+    ],
+    "spoilage_signs": [
+      "Bakso berubah keabuan lengket berlendir",
+      "Kuah berbau asam/tengik menyengat",
+      "Tekstur lembek hancur berair"
+    ]
+  },
+  {
+    "food_code": "CAPCAY",
+    "food_name": "Capcay Sayur",
+    "category": "Sayur",
+    "serving_size_gram": 150,
+    "calories": 70.0,
+    "protein": 3.5,
+    "fat": 3.0,
+    "carbs": 7.0,
+    "fiber": 2.5,
+    "vitaminA_mcg": 60.0,
+    "vitaminB_mg": 0.1,
+    "vitaminC_mg": 25.0,
+    "vitaminD_mcg": 0.0,
+    "calcium_mg": 45.0,
+    "iron_mg": 1.0,
+    "shelf_life_hours": 10,
+    "aliases": [
+      "capcay",
+      "cap cay",
+      "sayur capcay",
+      "mixed vegetables",
+      "tumis sayur"
+    ],
+    "spoilage_signs": [
+      "Sayuran layu kuning berlendir",
+      "Kuah mengental asam berbusa",
+      "Aroma masam menyengat"
+    ]
+  },
+  {
+    "food_code": "PEMPEK",
+    "food_name": "Pempek Ikan",
+    "category": "Lauk Hewani",
+    "serving_size_gram": 100,
+    "calories": 220.0,
+    "protein": 9.0,
+    "fat": 7.0,
+    "carbs": 30.0,
+    "fiber": 1.0,
+    "vitaminA_mcg": 5.0,
+    "vitaminB_mg": 0.1,
+    "vitaminC_mg": 1.0,
+    "vitaminD_mcg": 0.2,
+    "calcium_mg": 25.0,
+    "iron_mg": 1.2,
+    "shelf_life_hours": 18,
+    "aliases": [
+      "pempek",
+      "pempek ikan",
+      "fish cake",
+      "empek-empek"
+    ],
+    "spoilage_signs": [
+      "Permukaan berlendir licin",
+      "Bau amis asam menyengat (Trimetilamina)",
+      "Tekstur hancur berair"
+    ]
+  },
+  {
+    "food_code": "RENDANG_SAPI",
+    "food_name": "Rendang Daging Sapi",
+    "category": "Lauk Hewani",
+    "serving_size_gram": 100,
+    "calories": 250.0,
+    "protein": 18.0,
+    "fat": 18.0,
+    "carbs": 4.0,
+    "fiber": 1.5,
+    "vitaminA_mcg": 10.0,
+    "vitaminB_mg": 0.3,
+    "vitaminC_mg": 1.0,
+    "vitaminD_mcg": 0.1,
+    "calcium_mg": 20.0,
+    "iron_mg": 2.5,
+    "shelf_life_hours": 36,
+    "aliases": [
+      "rendang",
+      "rendang sapi",
+      "beef rendang",
+      "randang"
+    ],
+    "spoilage_signs": [
+      "Daging berubah warna kehijauan/cokelat kotor",
+      "Bau busuk belerang/amonia pekat",
+      "Lendir licin tebal di permukaan"
+    ]
+  },
+  {
+    "food_code": "SATE",
+    "food_name": "Sate Ayam/Sapi",
+    "category": "Lauk Hewani",
+    "serving_size_gram": 100,
+    "calories": 200.0,
+    "protein": 20.0,
+    "fat": 12.0,
+    "carbs": 3.0,
+    "fiber": 0.5,
+    "vitaminA_mcg": 8.0,
+    "vitaminB_mg": 0.2,
+    "vitaminC_mg": 1.0,
+    "vitaminD_mcg": 0.1,
+    "calcium_mg": 15.0,
+    "iron_mg": 1.8,
+    "shelf_life_hours": 14,
+    "aliases": [
+      "sate",
+      "satay",
+      "sate ayam",
+      "sate sapi",
+      "chicken satay",
+      "beef satay"
+    ],
+    "spoilage_signs": [
+      "Daging keabuan pudar di dekat sumbu tusuk",
+      "Bau tengik/asam busuk (Pseudomonas)",
+      "Permukaan lengket berlendir"
+    ]
+  },
+  {
+    "food_code": "TERONG_BALADO",
+    "food_name": "Terong Balado",
+    "category": "Sayur",
+    "serving_size_gram": 100,
+    "calories": 95.0,
+    "protein": 1.5,
+    "fat": 5.0,
+    "carbs": 11.0,
+    "fiber": 2.8,
+    "vitaminA_mcg": 12.0,
+    "vitaminB_mg": 0.1,
+    "vitaminC_mg": 8.0,
+    "vitaminD_mcg": 0.0,
+    "calcium_mg": 18.0,
+    "iron_mg": 0.6,
+    "shelf_life_hours": 10,
+    "aliases": [
+      "terong balado",
+      "terong",
+      "eggplant",
+      "eggplant balado",
+      "sambal terong"
+    ],
+    "spoilage_signs": [
+      "Terong lembek berair kehitaman",
+      "Sambal berbau asam/tengik",
+      "Permukaan berlendir"
+    ]
   }
 ];
 
