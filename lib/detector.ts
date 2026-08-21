@@ -788,8 +788,8 @@ async function analyzePlatedDishMultiItem(
 
     addedCodes.add(classified.foodCode);
     let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-    let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
-    let recommendation = 'Layak dan aman untuk dikonsumsi.';
+    let forensicFlag = `Tidak ditemukan indikator visual bahaya (jamur/basi/kecoklatan ekstrem) pada ${nutrition.food_name}.`;
+    let recommendation = 'Tetap periksa aroma, tekstur, dan kebersihan penyajian sebelum dikonsumsi.';
 
     if (region.color.hasMold) {
       safetyStatus = 'danger';
@@ -890,8 +890,8 @@ async function analyzeYoloMultiItem(
     seen.add(nutrition.food_code);
 
     let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-    let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
-    let recommendation = 'Layak dan aman untuk dikonsumsi.';
+    let forensicFlag = `Tidak ditemukan indikator visual bahaya (jamur/basi/kecoklatan ekstrem) pada ${nutrition.food_name}.`;
+    let recommendation = 'Tetap periksa aroma, tekstur, dan kebersihan penyajian sebelum dikonsumsi.';
 
     // STATUS FORENSIK 3-WARNA (HIJAU/KUNING/MERAH) — murni dari bukti visual:
     // MERAH  = ada koloni kapang/jamur/basi (hasMold).
@@ -911,7 +911,7 @@ async function analyzeYoloMultiItem(
       recommendation = 'Periksa kesegaran lebih dulu; bila berbau/menyimpang, jangan dikonsumsi.';
     } else {
       safetyStatus = 'safe';
-      forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+      forensicFlag = `Tidak ditemukan indikator visual bahaya (jamur/basi/kecoklatan ekstrem) pada ${nutrition.food_name}.`;
     }
 
     results.push({
@@ -1022,8 +1022,8 @@ async function analyzeOmprengCompartments(
 
     addedCodes.add(finalCode);
     let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-    let forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
-    let recommendation = 'Layak dan aman untuk dikonsumsi.';
+    let forensicFlag = `Tidak ditemukan indikator visual bahaya (jamur/basi/kecoklatan ekstrem) pada ${nutrition.food_name}.`;
+    let recommendation = 'Tetap periksa aroma, tekstur, dan kebersihan penyajian sebelum dikonsumsi.';
 
     // STATUS FORENSIK 3-WARNA (HIJAU/KUNING/MERAH) — murni dari bukti visual:
     // MERAH  = ada koloni kapang/jamur/basi (hasMold).
@@ -1043,7 +1043,7 @@ async function analyzeOmprengCompartments(
       recommendation = 'Periksa kesegaran lebih dulu; bila berbau/menyimpang, jangan dikonsumsi.';
     } else {
       safetyStatus = 'safe';
-      forensicFlag = `Kondisi visual ${nutrition.food_name} segar, matang higienis, dan layak konsumsi.`;
+      forensicFlag = `Tidak ditemukan indikator visual bahaya (jamur/basi/kecoklatan ekstrem) pada ${nutrition.food_name}.`;
     }
 
     results.push({
@@ -1080,21 +1080,6 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
   const canvasH = canvas.height || 480;
 
   const fullColor = analyzeRegionPixels(canvas);
-  const isOmpreng = isOmprengMealTray(fullColor, canvas);
-
-  const globalClassified = await classifyFoodSmart(canvas, fullColor);
-  const isPureBreadOrFruit =
-    fullColor.hasMold ||
-    globalClassified.foodCode === 'ROTI_TAWAR' ||
-    globalClassified.foodCode === 'PISANG' ||
-    globalClassified.foodCode === 'APEL' ||
-    globalClassified.foodCode === 'ANGGUR' ||
-    globalClassified.foodCode === 'JERUK' ||
-    globalClassified.foodCode === 'STROBERI' ||
-    globalClassified.foodCode === 'NANAS' ||
-    fullColor.breadWheatRatio > 0.3 ||
-    fullColor.purpleDarkRatio > 0.35 ||
-    fullColor.bananaYellowRatio > 0.45;
 
   // DETEKSI MULTI-OBJEK MURNI via YOLO (deep learning).
   // Label & box 100% dari model yang dilatih di dataset — TIDAK ADA
