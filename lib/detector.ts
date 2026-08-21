@@ -695,7 +695,8 @@ async function classifyFoodSmart(
       INDONESIAN_FOOD_CODE_MAP[yoloLabel.toLowerCase()] ||
       COCO_FOOD_MAP[yoloLabel.toLowerCase()];
     if (yoloCode) {
-      return { foodCode: yoloCode, confidence: Math.max(80, yoloConf) };
+      // Confidence jujur dari model — TIDAK di-inflate. Skor palsu = data palsu.
+      return { foodCode: yoloCode, confidence: yoloConf };
     }
   }
   return { foodCode: null, confidence: 0 };
@@ -1106,39 +1107,29 @@ export async function analyzeFoodImage(canvas: HTMLCanvasElement): Promise<FoodI
     console.warn('YOLO multi-item analysis failed:', e);
   }
 
-  // Fallback minimal HANYA kalau YOLO sama sekali tidak mendeteksi apa-apa
-  // (mis. foto blur total). Tidak menebak nama dari warna.
+  // TIDAK ADA DUMMY DATA: kalau YOLO tidak mendeteksi makanan apa pun,
+  // JANGAN fabrikasi hasil ("Nasi Putih AMAN") dari tebakan. Yang keluar
+  // hanya bukti visual nyata — deteksi jamur/basi dari analisis piksel.
+  // Kalau pun tidak ada jamur, hasil kosong: UI menampilkan "tidak ada
+  // makanan terdeteksi", bukan makanan palsu.
   if (results.length === 0) {
-    const fb = globalClassified.foodCode || 'NASI_PUTIH';
-    const nutrition =
-      findNutritionByText(fb) || findFallbackNutrition(fb) || findFallbackNutrition('NASI_PUTIH')!;
-    let safetyStatus: 'safe' | 'warning' | 'danger' = 'safe';
-    let forensicFlag = `Kondisi fisik visual ${nutrition.food_name} normal, segar, dan layak konsumsi.`;
     if (fullColor.hasMold) {
-      safetyStatus = 'danger';
-      forensicFlag = `BAHAYA KERACUNAN: Terdeteksi ${fullColor.moldType} aktif (${(fullColor.moldRatio * 100).toFixed(1)}% area koloni mikroba).`;
+      results.push({
+        id: Math.random().toString(36).substring(2, 9),
+        name: 'Makanan tidak teridentifikasi',
+        category: 'Tidak Diketahui',
+        confidence: 0,
+        safetyStatus: 'danger',
+        forensicFlag: `BAHAYA KERACUNAN: Terdeteksi ${fullColor.moldType} aktif (${(fullColor.moldRatio * 100).toFixed(1)}% area koloni mikroba) meski model tidak mengenali makanannya.`,
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
+        recommendation: 'DILARANG DIMAKAN! Makanan terindikasi terkontaminasi jamur/basi.',
+        box: { x: 0.08, y: 0.08, width: 0.84, height: 0.84 },
+      });
     }
-    results.push({
-      id: Math.random().toString(36).substring(2, 9),
-      name: nutrition.food_name,
-      category: nutrition.category,
-      confidence: globalClassified.confidence,
-      safetyStatus,
-      forensicFlag,
-      calories: nutrition.calories,
-      protein: nutrition.protein,
-      fat: nutrition.fat,
-      carbs: nutrition.carbs,
-      fiber: nutrition.fiber,
-      vitaminA_mcg: nutrition.vitaminA_mcg || 0,
-      vitaminB_mg: nutrition.vitaminB_mg || 0,
-      vitaminC_mg: nutrition.vitaminC_mg || 0,
-      vitaminD_mcg: nutrition.vitaminD_mcg || 0,
-      calcium_mg: nutrition.calcium_mg || 0,
-      iron_mg: nutrition.iron_mg || 0,
-      recommendation: 'Layak dan aman untuk dikonsumsi.',
-      box: { x: 0.08, y: 0.08, width: 0.84, height: 0.84 },
-    });
   }
 
   // Simpan hasil ke Supabase jika aktif
